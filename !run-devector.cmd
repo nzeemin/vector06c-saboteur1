@@ -1,0 +1,1 @@
+start x-emu-devector\devector sabot1.rom
