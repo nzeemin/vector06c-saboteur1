@@ -1,6 +1,7 @@
 ;----------------------------------------------------------------------------
 
-	PUBLIC KeyLineEx, KeyLine0, KeyLine7, JoystickP
+	PUBLIC KeyLineEx, KeyLine0, KeyLine7
+	PUBLIC JoystickP	; F200DULR
 	PUBLIC BorderColor
 	PUBLIC dzx0, SABOTCOD0_END
 
@@ -110,10 +111,10 @@ KEYINT:
 ;	out (3),A
 ;	in A,(2)
 ;	ld (KeyLine6),A
-	ld A,07Fh
-	out (3),A
-	in A,(2)
-	ld (KeyLine7),A
+;	ld A,07Fh
+;	out (3),A
+;	in A,(2)
+;	ld (KeyLine7),A
 ; Joystick scan
 	in A,(6)		; read Joystick-P
 KEYINT_J:
@@ -141,7 +142,7 @@ KeyLine0:	DB 11111111b
 ;KeyLine1:	DB 11111111b
 ;KeyLine5:	DB 11111111b
 ;KeyLine6:	DB 11111111b
-KeyLine7:	DB 11111111b
+;KeyLine7:	DB 11111111b
 JoystickP:	DB 11111111b
 
 BorderColor:	DB 0		; border color number 0..15

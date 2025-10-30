@@ -89,13 +89,13 @@ L71DF:	DEFB	$9E,$00,$01,$08,$00,$01,$16,$01
 L71E7:	DEFB	$FE,$B8,$67,$B0,$6F,$0A,$D9,$67
 L71EF:	DEFB	$D1,$6F,$0D
 
-L7222:	DEFB	$00		; Input method: 1 = Joystick, 0 = Keyboard or Protek
+INPUTM:	DEFB	$00		; Input method: 1 = Joystick, 0 = Keyboard
 L7223:	DEFB	$EF,$01,$04	; Ports and bits for the current input method
 	DEFB	$EF,$08,$03
 	DEFB	$EF,$10,$02
 	DEFB	$F7,$10,$01
 	DEFB	$EF,$04,$00
-L7232:	DEFB	$00		; Input bits: 000FUDLR
+INPUTB:	DEFB	$00		; Input bits: 000FUDLR
 ;L7233:	DEFW	$5A41		; Screen attributes address stored during tile map drawing
 L7235:	DEFW	TLSCR5		; Tile screen 5 address stored during tile map drawing
 L7237:	DEFW	TLSCR4		; Tile screen 4 address stored during tile map drawing
@@ -709,10 +709,10 @@ NRJDEC:	RET		; !!MUT-CMD!! $C5 PUSH BC or $C9 RET
 	CP $01
 	JR NZ,L9DF1
 L9DEC:	JP LBEAA	; Energy is out => Saboteur dead
-	DI		; !!UNUSED!!
-	RET
+	;DI		; !!UNUSED!!
+	;RET
 L9DF1:	DJNZ NRJDEC	; continue loop by B
-	DI
+	;DI
 	RET
 
 ; Room 94AB initialization
@@ -2375,7 +2375,7 @@ LB368:	LD A,(L97CF+1)	; get trigger "E" value
 	JP LA18D	; => Finish Room 97A6 initialization
 
 ; Play melody ??; HL = melody address
-LB371:	DI
+LB371:	;DI
 	LD C,$C8
 LB374:	LD A,(HL)
 	AND $07
@@ -2746,7 +2746,7 @@ LB5F5:	LD (HL),A
 	LD A,$C8
 	LD (LBD79+1),A
 	CALL L7472
-	DI
+	;DI
 	LD HL,LB513	; Initial room address
 	LD (ROOM),HL	; set Current Room address
 	LD HL,LB532	; movement handler for initial room
@@ -2910,7 +2910,7 @@ LB768:	POP HL		; restore address in Table of objects
 LB77B:	XOR A
 	;LD ($5C08),A	; clear LASTK
 	;RST $38
-	DI
+	;DI
 	;LD A,($5C08)	; get LASTK
 	LD A,(LB5C6)	; get Time mode
 	CP $01		; time stopped?
@@ -3071,7 +3071,7 @@ LB891:	LD HL,LB84F	; NEAR item address
 	LD A,$7B
 	CALL LB86C
 	CALL DRITEM	; Draw NEAR/HELD item
-	DI
+	;DI
 	LD DE,$E600	; -26
 	LD A,$61
 	CALL LB86C
@@ -3086,7 +3086,7 @@ LB8B0:	LD HL,LB850	; HELD tile address
 	SRL A
 LB8C2:	LD (DRITEM+1),A
 	CALL DRITEM	; Draw NEAR/HELD item
-	DI
+	;DI
 LB8C9:	XOR A
 	LD (LA39E),A
 LB8CD:	JP LBEB3	; !!MUT-ARG!! => run handler
@@ -3488,37 +3488,52 @@ LBBD4:	CALL LBBDF	; Read Input
 	JP NZ,LB8D0	; => Update Ninja on tilemap
 	JP LC226	; => Ninja standing
 
-; Read Input
+; Game controls
+;   7   6   5   4   3   2   1   0
+;               Fr  Up  Dn  Lt  Rt
+
+; Read Input, store to INPUTB and return in A
 LBBDF:	PUSH HL
-	LD HL,L7222
-	XOR A
-	CP (HL)		; Input method = Keyboard/Protek?
-	JR Z,LBBEE
-	;IN A,($1F)	; read joystick port
-LBBE9:	LD (L7232),A	; store input bits
+	xor a
+	ld (ReadInput_3+1),a
+	ld hl,ReadInput_map  ; Point HL at the keyboard list
+	ld b,2		; number of rows to check
+ReadInput_0:
+	ld e,(hl)	; get address low
+	inc hl
+	ld d,(hl)	; get address high
+	inc hl
+	ld a,(de)	; get bits for keys
+	ld c,8		; number of keys in a row
+ReadInput_1:
+	rla		; shift A left; bit 0 sets carry bit
+	jp c,ReadInput_2	; if the bit is 1, the key's not pressed
+	ld e,a		; save A
+	ld a,(ReadInput_3+1)
+	or (hl)		; set bit for the key pressed
+	ld (ReadInput_3+1),a
+	ld a,e		; restore A
+ReadInput_2:
+	inc hl		; next table address
+	dec c
+	jp nz,ReadInput_1	; continue the loop by bits
+	dec b
+	jp nz,ReadInput_0	; continue the loop by lines
+ReadInput_3:
+	ld a,$00	; set the result
+	LD (INPUTB),A	; store input bits
 	POP HL
+;INFLOOP: jr INFLOOP ;DEBUG
 	RET
-LBBEE:	PUSH BC
-	LD B,$05
-	LD C,$00
-LBBF3:	INC HL
-	LD A,(HL)
-	;IN A,($FE)
-	INC HL
-	AND (HL)
-	INC HL
-	JR NZ,LBC07
-	LD A,(HL)
-	ADD A,A
-	ADD A,A
-	ADD A,A		; * 8
-	ADD A,$C1
-	LD (LBC05+1),A
-LBC05:	SET 1,C
-LBC07:	DJNZ LBBF3
-	LD A,C
-	POP BC
-	JR LBBE9	; => store input bits and RET
+
+; Mapping: Arrows - movement, US/SS/RusLat/ZB - fire, Tab - hyper
+ReadInput_map:                        ; 7   6   5   4   3   2   1   0
+  ;DW KeyLineEx
+  ;DB $01,$01,$01,$00,$00,$00,$00,$00  ; R/L SS  US  --  --  --  --  --
+  DW KeyLine0
+  DB $04,$01,$08,$02,$10,$10,$10,$10  ; Dn  Rt  Up  Lt  ZB  VK  PS  Tab
+  DW JoystickP
+  DB $10,$10,$00,$00,$04,$08,$02,$01  ; Fr  Fr  --  --  Dn  Up  Lt  Rt
 
 ; Routine at BC0D
 ; Prepare screen background for title picture
@@ -3728,7 +3743,7 @@ LBD79:	LD A,$C8	; !!MUT-ARG!!
 	INC B
 LBD8D:	LD A,B
 	LD (LA3A3),A
-	LD A,(L7232)	; get Input bits
+	LD A,(INPUTB)	; get Input bits
 	BIT 3,A		; check UP bit
 	JR Z,LBD9B
 	DEC B
@@ -3934,7 +3949,7 @@ LBF7B:	LD HL,TLSCR0+2	; Tile screen 0 + 2
 	LD (L7343),A	; set counter = 3
 	LD A,(L7239)	; get Ninja direction
 	CP $00		; left?
-	LD A,(L7232)	; get Input bits
+	LD A,(INPUTB)	; get Input bits
 	JR Z,LBFA0
 	BIT 0,A		; check RIGHT bit
 	CALL NZ,LC4E8
@@ -4454,7 +4469,7 @@ LC412:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	JP LC14B
 
 ; Check if UP pressed
-LC42C:	LD A,(L7232)	; get Input bits
+LC42C:	LD A,(INPUTB)	; get Input bits
 	BIT 3,A		; check UP bit
 	JR Z,LC477
 
@@ -4698,7 +4713,8 @@ LC5C6:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	JP NC,LB8D0	; => Update Ninja on tilemap
 
 ; Ninja hit somehting after falling
-LC5EE:	LD A,$01
+LC5EE:
+	LD A,$01
 	LD (LA39E),A
 	LD HL,NJAFAL	; falling counter address
 	LD B,(HL)	; get counter value
@@ -5187,7 +5203,7 @@ LDFA8:	;CP $53		; 'S' ?
 	;JR Z,LE004	; => Keyboard selected
 	;CP $52		; 'R' ?
 	;JP Z,LE097	; => Redefine Keys
-	;LD A,(L7222)	; get Input method
+	;LD A,(INPUTM)	; get Input method
 	;CP $01		; Joystick?
 	;JR NZ,LDFCC
 	;IN A,($1F)	; read joystick port
@@ -5230,7 +5246,7 @@ LDFF1:	CALL LDFE6	; Unhighlight Menu item
 	LD (LDFDB+1),HL
 	CALL LDFDB	; Highlight Menu item
 	LD A,$01
-	LD (L7222),A
+	LD (INPUTM),A
 	JR LDFCC
 
 ; Keyboard selected in Main menu
@@ -5242,7 +5258,7 @@ LE004:	CALL LDFE6	; Unhighlight Menu item
 	;JR LE024
 
 ; Entry point
-LE024:	LD DE,L7222
+LE024:	LD DE,INPUTM
 	XOR A
 	LD (DE),A
 	INC DE
@@ -5902,9 +5918,9 @@ LF9BF:	DJNZ LF9BF
 	OR E
 	JR NZ,LF9BC
 LF9C5:	CALL LBBDF	; Read Input
-	LD A,(L7222)
+	LD A,(INPUTM)
 	CP $00
-	LD A,(L7232)	; get Input bits
+	LD A,(INPUTB)	; get Input bits
 	JR Z,LF9D7
 	BIT 4,A
 	RET NZ
@@ -6012,9 +6028,10 @@ TLSCR5:	DEFS	510
 
 ; Front tiles, 124 tiles, 17 bytes each
 INCLUDE "sabot1t1.asm"
-
+	DEFS 2013
+INCLUDE "sabot1t1b.asm"
 INCLUDE "sabot1t2.asm"
-
+	DEFS 295
 INCLUDE "sabot1t3.asm"
 
 ;----------------------------------------------------------------------------
