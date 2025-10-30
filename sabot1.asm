@@ -9,6 +9,8 @@
 	;JP	LBC0D
 	JP	LF9E7
 
+;----------------------------------------------------------------------------
+
 ; Show title picture (two ninjas)
 L6289: 	LD HL,L62DB	; Encoded picture data address
  	LD DE,TLSCR0	; Tile screens address, used as a buffer
@@ -95,8 +97,8 @@ L7223:	DEFB	$EF,$01,$04	; Ports and bits for the current input method
 	DEFB	$EF,$04,$00
 L7232:	DEFB	$00		; Input bits: 000FUDLR
 ;L7233:	DEFW	$5A41		; Screen attributes address stored during tile map drawing
-L7235:	DEFW	$7184		; Tile screen 5 address stored during tile map drawing
-L7237:	DEFW	$6F86		; Tile screen 4 address stored during tile map drawing
+L7235:	DEFW	TLSCR5		; Tile screen 5 address stored during tile map drawing
+L7237:	DEFW	TLSCR4		; Tile screen 4 address stored during tile map drawing
 L7239:	DEFB	$00		; Byte mirror flag
 
 ; Mirror table
@@ -156,31 +158,8 @@ L7359:	POP HL		; Restore token sequence address
 	ld (BorderColor),a
 	JR L734A	; => B702 Proceed to the next room token
 
-; Room token #?? - Draw frame with one tile; params: 1 byte (UNUSED)
-L7361:	POP HL		; Restore token sequence address
-	INC HL		; Skip token byte
-	LD A,(HL)	; get tile byte
-	PUSH HL
-	LD HL,TLSCR0	; Tile screen 0 start address
-	LD B,$1E	; 30
-L736A:	LD (HL),A
-	INC HL
-	DJNZ L736A
-	LD B,$0F
-	LD DE,$001D
-L7373:	LD (HL),A
-	ADD HL,DE
-	LD (HL),A
-	INC HL
-	DJNZ L7373
-	LD B,$1E
-L737B:	LD (HL),A
-	INC HL
-	DJNZ L737B
-	JR L734A	; => B702 Proceed to the next room token
-
 ; Room token #01: Fill downward; params: 4 bytes (count, filler, address)
-L7381:	LD DE,$001E	; 30
+L7381:	LD DE,30	; +30
 ;
 L7384:	POP HL		; Restore token sequence address
 	INC HL		; Skip token byte
@@ -224,7 +203,7 @@ L73A6:	LD (L73BB),A	; set the command
 	LD H,(HL)	; get address high byte
 	LD L,A
 	LD A,D
-	LD DE,$001E	; 30
+	LD DE,30	; +30
 L73B8:	PUSH HL
 	LD C,B
 L73BA:	LD (HL),A
@@ -252,7 +231,7 @@ L73C7:	LD (L73DE),A	; set the command
 	LD H,(HL)	; get address high byte
 	LD L,A
 	LD A,D
-	LD DE,$001E	; 30
+	LD DE,30	; +30
 	LD C,$01
 L73DB:	PUSH HL
 	PUSH BC
@@ -370,7 +349,7 @@ L7452:	POP HL		; Restore token sequence address
 	LD H,(HL)
 	LD L,A
 	LD A,D
-	LD DE,$001E	; 30
+	LD DE,30	; +30
 L7463:	PUSH HL
 	PUSH BC
 L7465:	LD (HL),A
@@ -383,35 +362,39 @@ L7465:	LD (HL),A
 	DJNZ L7463
 	JP L734A	; => B702 Proceed to the next room token
 
+;------------------------------------------------------------------------------
+
+; Initial Energy fill
 L7472:	DI
 	LD (L74F0+1),SP
 	LD SP,L753B
 	ld de,$0500
 	LD A,$FF
-	LD C,$10
-L7481:	POP HL
+	LD C,16
+L7481:	POP HL		; get screen address
 	ADD HL,DE
 	LD B,$0F
-L7485:	LD (HL),A
-	INC HL
+L7485:	LD (HL),A	; put to screen
+	inc h
 	DJNZ L7485
 	DEC C
 	JR NZ,L7481
 	LD SP,(L74F0+1)
 	LD A,$13
-L7492:	LD (L749C),A	; set Energy = MAX
+L7492:	LD (NRJ),A	; set Energy = MAX
 	LD A,$01
 L7497:	LD (L749D),A
 	EI
 	RET
 
-L749C:	DEFB	$13	; Energy $04..$13
+NRJ:	DEFB	$13	; Energy $04..$13
 L749D:	DEFB	$01	; Energy lower, running bit
 
+; Decreasing Energy
 L749E:	DI
 	LD (L74F0+1),SP
 	LD SP,L753B
-	LD A,(L749C)	; get Energy
+	LD A,(NRJ)	; get Energy
 	ld d,A
 	ld e,$00
 	LD B,$10
@@ -425,16 +408,16 @@ L74B2:	POP HL
 	DJNZ L74B2
 	LD A,(L749D)
 	RLC A
-	LD ($749D),A
+	LD (L749D),A
 	JR NC,L74C7
-	LD HL,L749C	; Energy address
+	LD HL,NRJ	; Energy address
 	DEC (HL)	; Decrease Energy
 L74C7:	LD SP,(L74F0+1)
 	EI
 	RET
 
 ; Draw NEAR/HELD item
-L74CD:	LD A,$00	; !!MUT-ARG!! item number
+DRITEM:	LD A,$00	; !!MUT-ARG!! item number
 	LD H,$00
 	LD L,A
 	ADD HL,HL
@@ -450,18 +433,18 @@ L74D3:	LD DE,LB5B0	; !!MUT-ARG!! address for Table of items
 L74E4:	POP HL
 	LD B,$04
 L74E7:	LD A,(DE)
-	LD (HL),A
+	LD (HL),A	; put to screen
 	INC DE
-	INC HL
+	inc h
 	DJNZ L74E7
 	DEC C
 	JR NZ,L74E4
-L74F0:	LD SP,$6255
+L74F0:	LD SP,$A000	; !!MUT-ARG!!
 L74F3:	LD HL,$EA61 ;TODO
 	LD C,$03
 L74F8:	LD B,$04
 L74FA:	LD A,(DE)
-	LD (HL),A
+	;LD (HL),A	; put attribute
 	INC HL
 	INC DE
 	DJNZ L74FA
@@ -477,16 +460,17 @@ L74FA:	LD A,(DE)
 L750B:	DEFB	$00,$00,$6C,$00,$D8,$00,$44,$01
 L7513:	DEFB	$B0,$01,$1C,$02,$88,$02,$F4,$02
 
+; Screen addresses for indicator panel, used to draw NEAR/HELD items, and Energy gauge
 L751B:	DEFW	$C167,$C166,$C165,$C164
 L7523:	DEFW	$C163,$C162,$C161,$C160
 L752B:	DEFW	$C15F,$C15E,$C15D,$C15C
 L7533:	DEFW	$C15B,$C15A,$C159,$C158
-L753B:	DEFW	$C657,$C656,$C655,$C654
-L7543:	DEFW	$C653,$C652,$C651,$C650
-L754B:	DEFW	$C64F,$C64E,$C64D,$C64C
-L7553:	DEFW	$C64B,$C64A,$C649,$C648
+L753B:	DEFW	$C157,$C156,$C155,$C154
+L7543:	DEFW	$C153,$C152,$C151,$C150
+L754B:	DEFW	$C14F,$C14E,$C14D,$C14C
+L7553:	DEFW	$C14B,$C14A,$C149,$C148
 
-L755B:	DEFB	$00		; Ninja falling count, to decrease Energy on hit
+NJAFAL:	DEFB	$00		; Ninja falling count, to decrease Energy on hit
 
 L755C:
 ;TODO
@@ -500,13 +484,13 @@ L791B: JP LB425     ; Jump to room-specific initialization routine
 ;----------------------------------------------------------------------------
 
 L9C39:	DEFB	$00,$00,$00,$00,$00,$00,$00
-L9C40:	DEFB	$08	; Ninja Y within the room, 0 at the top
+NJAY:	DEFB	$08	; Ninja Y within the room, 0 at the top
 L9C41:	DEFB	$06	; Ninja X within the room
-L9C42:	DEFW	$00F6	; Ninja position in tilemap: Y * 30 + X
+NJAPOS:	DEFW	$00F6	; Ninja position in tilemap: Y * 30 + X
 
 ; Process a dog
 L9C44:	LD HL,L71D3	; dog Y position address
-	LD A,(L9C40)	; get Ninja Y
+	LD A,(NJAY)	; get Ninja Y
 	SUB (HL)
 	CP $07
 	JR NC,L9C80
@@ -550,11 +534,11 @@ L9C80:	LD A,(L71CD)	; !!MUT-ARG!! get Dog direction
 L9CA8:	CP $00
 	JP NZ,L9D8B
 	LD HL,(L71CB)	; get Dog position in tilemap
-	LD DE,TLSCR2+33	; $69AD = $698C (Tile screen 2) + 33: for right direction
+	LD DE,TLSCR2+33	; Tile screen 2 + 33: for right direction
 	LD A,(L71CD)	; get Dog direction
 	CP $01		; right?
 	JR Z,L9CBD	; right =>
-	LD DE,TLSCR2+30	; $69AA = $698C (Tile screen 2) + 30: for left direction
+	LD DE,TLSCR2+30	; Tile screen 2 + 30: for left direction
 L9CBD:	ADD HL,DE	; now HL = Dog position in Ninja tile screen
 	LD A,(HL)	; get tile from Ninja tile screen
 	INC A		; $FF?
@@ -718,7 +702,7 @@ L9DD0:	LD (LB673+1),HL	; save current Dog data address
 NRJDEC:	RET		; !!MUT-CMD!! $C5 PUSH BC or $C9 RET
 	CALL L749E	; Decrease Energy
 	POP BC
-	LD A,(L749C)	; get Energy
+	LD A,(NRJ)	; get Energy
 	CP $04		; Energy = MIN ?
 	JR NZ,L9DF1
 	LD A,(L749D)	; get Energy lower
@@ -1056,7 +1040,7 @@ LA3B3:	DEFB $0F
 LA3B4:	DEFB $01	; ?? Guard counter
 
 ; Ninja and Guard in 12 tiles by X
-LA3B5:	LD A,(L9C40)	; get Ninja Y
+LA3B5:	LD A,(NJAY)	; get Ninja Y
 	LD HL,L71C6	; Guard Y position address
 	CP (HL)		; compare Ninja Y to Guard Y
 	RET NZ
@@ -1070,7 +1054,7 @@ LA3BE:	LD A,$14	; !!MUT-ARG!! ??
 	JP LA6FF	; => Draw Guard on tilemap
 
 ; Ninja and Guard in 9 tiles by X
-LA3D1:	LD A,(L9C40)	; get Ninja Y
+LA3D1:	LD A,(NJAY)	; get Ninja Y
 	LD HL,L71C6	; Guard Y position address
 	CP (HL)		; compare Ninja Y to Guard Y
 	RET NZ
@@ -1085,7 +1069,7 @@ LA3D1:	LD A,(L9C40)	; get Ninja Y
 	JP LA6FF	; => Draw Guard on tilemap
 
 ; Ninja and Guard in 3 tiles by X
-LA3EE:	LD A,(L9C40)	; get Ninja Y
+LA3EE:	LD A,(NJAY)	; get Ninja Y
 	LD HL,L71C6	; Guard Y position address
 	CP (HL)		; compare Ninja Y to Guard Y
 	RET NZ
@@ -1108,7 +1092,7 @@ LA3EE:	LD A,(L9C40)	; get Ninja Y
 	JP LA6FF	; => Draw Guard on tilemap
 
 ; Ninja and Guard are very close by X
-LA418:	LD A,(L9C40)	; get Ninja Y
+LA418:	LD A,(NJAY)	; get Ninja Y
 	LD HL,L71C6	; Guard Y position address
 	CP (HL)		; compare Ninja Y to Guard Y
 	RET NZ
@@ -1256,7 +1240,7 @@ LA52F:	CP $0A
 	JR NZ,LA56D
 	LD HL,LD486	; Sprite Ninja/Guard standing
 	LD (LA70E+1),HL	; set Guard sprite
-	LD HL,L9C40	; Ninja Y address
+	LD HL,NJAY	; Ninja Y address
 	LD A,(L71C6)	; get Guard Y
 	ADD A,$03	; Guard Y + 3
 	CP (HL)		; compare with Ninja Y
@@ -1297,11 +1281,11 @@ LA57A:	CP $08
 	JP NZ,LA6FF	; => Draw Guard on tilemap
 	LD (HL),$03	; set Guard state = walking state 3
 	LD HL,(L71C3)
-	LD DE,TLSCR2+64	; $69CC = $698C (Tile screen 2) + 64
+	LD DE,TLSCR2+64	; Tile screen 2 + 64
 	LD A,(L7347)	; get Guard direction
 	CP $01		; right?
 	JR Z,LA599	; yes =>
-	LD DE,TLSCR2+61	; $69C9 = $698C (Tile screen 2) + 61
+	LD DE,TLSCR2+61	; Tile screen 2 + 61
 LA599:	ADD HL,DE
 	LD A,(HL)
 	INC A
@@ -1340,11 +1324,11 @@ LA5C7:	CP $06
 	LD HL,LD4B0	; Sprite Ninja/Guard jumping
 	LD (LA70E+1),HL	; set Guard sprite
 	LD HL,(L71C3)	; get Guard position in tilemap
-	LD DE,TLSCR2+65	; $69CD = $698C (Tile screen 2) + 65
+	LD DE,TLSCR2+65	; Tile screen 2 + 65
 	LD A,(L7347)	; get Guard direction
 	CP $01		; right?
 	JR Z,LA5F1	; right =>
-	LD DE,TLSCR2+60	; $69C8 = $698C (Tile screen 2) + 60
+	LD DE,TLSCR2+60	; Tile screen 2 + 60
 LA5F1:	ADD HL,DE	; now HL = address in Ninja tile screen
 	LD A,(HL)	; get tile from Ninja screen
 	INC A		; $FF ?
@@ -1628,9 +1612,9 @@ LACA2:	DEFW LA31B,LA311,LA307,LA2FD
 	DEFW LA271,LA2E9,LA299,L71D6
 
 ; Draw game screen frames and indicator text
-LACCA:	EXX
-	LD DE,$5800
-	EXX
+LACCA:	;EXX
+	;LD DE,$5800
+	;EXX
 	LD HL,$C0FF	; Screen start address
 	LD DE,LAD65	; Game screen frames/indicators RLE encoded sequence
 LACD5:	LD A,(DE)
@@ -2070,7 +2054,7 @@ LB177:	EXX
 	CP $FF		; $FF - "earth" background?
 	JR NZ,LB184	; byte <> $FF =>
 	LD HL,LB1F9	; for $FF, skip Ninja tile processing
-LB184:	LD (LB1A0+1),HL	; save the chosen jump address ($B1A3 or $B1F9)
+LB184:	LD (LB1A0+1),HL	; save the chosen jump address (LB1A3 or LB1F9)
 	LD H,$00
 	LD L,A
 	PUSH HL
@@ -2089,7 +2073,7 @@ LB199:	LD A,(HL)	; get byte from tile data
 	INC DE		; move to next byte in tile buffer
 	DJNZ LB199	; loop for 9 bytes
 	LD (DE),A	; save attribute byte once more
-LB1A0:	JP LB1A3	; !!MUT-ARG!! $B1A3 or $B1F9
+LB1A0:	JP LB1A3	; !!MUT-ARG!! LB1A3 or LB1F9
 
 ; Process Tile screen 2 tile - Ninja
 LB1A3:	EXX
@@ -2153,7 +2137,7 @@ LB1FC:	EXX
 	LD A,(BC)	; get tile from Tile screen 3
 	CP $FF		; $FF - transparent?
 	JR Z,LB230	; $FF => skip Dog tile drawing
-	CALL LB2FE	; Exchange $7239 (Ninja direction) and $71CD (Dog direction)
+	CALL LB2FE	; Exchange (Ninja direction) and (Dog direction)
 	LD H,$00
 	LD L,A
 	ADD HL,HL
@@ -2180,7 +2164,7 @@ LB218:	INC HL
 	LD (DE),A
 	INC DE
 	DJNZ LB218
-	CALL LB2FE	; Exchange $7239 (Ninja direction) and $71CD (Dog direction)
+	CALL LB2FE	; Exchange (Ninja direction) and (Dog direction)
 
 ; Process Tile screen 4 tile - Guard
 LB230:	LD HL,(L7237)	; get address in Tile screen 4
@@ -2197,7 +2181,7 @@ LB230:	LD HL,(L7237)	; get address in Tile screen 4
 	ADD HL,DE	; now HL = tile data address
 	LD B,$08
 	LD DE,LB13E	; Tile buffer address
-	CALL LB30F	; Exchange $7239 (Ninja direction) and $7347 (Guard direction)
+	CALL LB30F	; Exchange (Ninja direction) and (Guard direction)
 LB24B:	INC HL
 	LD A,(DE)	; get byte from tile buffer
 	LD C,A
@@ -2214,7 +2198,7 @@ LB24B:	INC HL
 	LD (DE),A	; save result byte to tile buffer
 	INC DE
 	DJNZ LB24B	; loop for all 8 bytes
-	CALL LB30F	; Exchange $7239 (Ninja direction) and $7347 (Guard direction)
+	CALL LB30F	; Exchange (Ninja direction) and (Guard direction)
 
 ; Process Tile screen 5 tile - front
 LB263:	LD HL,(L7235)	; get address in Tile screen 5
@@ -2319,7 +2303,7 @@ LB2F9:	LD A,(IX+$7E)
 
 LB2FD:	DEFB $C3	; Counter for Ninja/Guard head tile change
 
-; Exchange $7239 (Ninja direction) and $71CD (dog direction)
+; Exchange (Ninja direction) and (dog direction)
 LB2FE:	PUSH AF
 	LD A,(L7239)	; get Ninja direction
 	PUSH AF
@@ -2330,7 +2314,7 @@ LB2FE:	PUSH AF
 	POP AF
 	RET
 
-; Exchange $7239 (Ninja direction) and $7347 (Guard direction)
+; Exchange (Ninja direction) and (Guard direction)
 LB30F:	PUSH AF
 	LD A,(L7239)	; get Ninja direction
 	PUSH AF
@@ -2441,18 +2425,18 @@ LB3AF:	DEFS $01
 
 ; Routine at B3B0
 LB3B0:	LD HL,LC681
-	LD (L982D),HL
+	LD (L982B+2),HL
 	LD HL,LB673+1	; current dog data address
 	LD (L9DD0+1),HL
 	LD HL,LC6A5
 	LD (L7C9C),HL
 	LD HL,LC671
-	LD (L947E),HL
-	LD (L93E1),HL
+	LD (L947C+2),HL
+	LD (L93DF+2),HL
 	LD HL,LB422
-	LD (L7BD4),HL
+	LD (L7BD2+2),HL
 	LD HL,LC64C
-	LD (L7920),HL
+	LD (L791E+2),HL
 	LD HL,LB702
 	LD (L734A+1),HL
 	LD B,$00
@@ -2565,7 +2549,7 @@ LB48D:	LD HL,TLSCR5+47	; !!MUT-ARG!! Turret address on Tile Screen 5
 	JR NZ,LB4C6
 	LD A,(HL)
 	PUSH HL
-	LD DE,L907A
+	LD DE,-TLSCR5
 	ADD HL,DE
 	SUB $26
 	LD IX,LA3AD
@@ -2616,8 +2600,8 @@ LB4E3:	INC (HL)
 	JR LB4E3
 LB4ED:	DJNZ LB4DE
 	LD HL,LAD52	; Pay value text address
-	LD C,$05	; five digits
-	LD DE,$C06F	; Screen address
+	LD C,5		; five digits
+	LD DE,$CC67	; Screen address
 	JP PRSTR	; => Print string, and RET
 
 ; Processing in initial room - the boat moving
@@ -2637,9 +2621,9 @@ LB50E:	LD (HL),A
 	RET
 
 ; Movement handler for initial room (B8CE handler)
-LB532:	LD HL,(L9C42)
+LB532:	LD HL,(NJAPOS)
 	INC HL		; increase Ninja position in tilemap
-	LD (L9C42),HL
+	LD (NJAPOS),HL
 	LD HL,L9C41	; Ninja X address
 	INC (HL)
 LB53D:	LD DE,TLSCR5+349
@@ -2670,9 +2654,9 @@ LB56B:	DJNZ LB56B	; delay
 	JP NZ,LB8D0	; => Update Ninja on tilemap
 	LD HL,L9C41	; Ninja X address
 	INC (HL)	; Moving right one tile
-	LD HL,(L9C42)
+	LD HL,(NJAPOS)
 	INC HL		; increase Ninja position in tilemap
-	LD (L9C42),HL
+	LD (NJAPOS),HL
 	LD HL,TLSCR5+349
 	LD (HL),$FF
 	LD DE,LD5AC	; Sprite Ninja jumping 3
@@ -2689,7 +2673,7 @@ LB598:	JP LF9A1
 
 LB59B:	DEFB $FE,$0E,$2D
 
-; Routine at B59E
+; Routine at B59E - Sound ??
 LB59E:	DEC C
 	JR NZ,LB59E
 	XOR A
@@ -2772,9 +2756,9 @@ LB5F5:	LD (HL),A
 	LD A,$01
 	LD (L9C41),A	; set Ninja X = 1
 	LD A,$05
-	LD (L9C40),A	; set Ninja Y = 5
+	LD (NJAY),A	; set Ninja Y = 5
 	LD HL,$0097
-	LD (L9C42),HL	; set Ninja position in tilemap: Y * 30 + X
+	LD (NJAPOS),HL	; set Ninja position in tilemap: Y * 30 + X
 	LD A,$13
 	LD (L7343),A	; set counter = 19
 
@@ -3005,7 +2989,7 @@ LB814:	LD A,(DE)	; get byte +$00
 	LD H,A
 	INC DE
 	PUSH DE		; save address in the table
-	LD DE,(L9C42)
+	LD DE,(NJAPOS)
 	ADD HL,DE	; add Ninja position in tilemap
 	POP DE		; restore address in the table
 	LD A,(DE)	; get byte +$02
@@ -3030,7 +3014,7 @@ LB83C:	LD A,(L749D)	; get Energy lower
 	RRC A
 	LD (L749D),A	; set Energy lower
 	RET NC
-	LD HL,L749C	; Energy address
+	LD HL,NRJ	; Energy address
 	INC (HL)	; increase Energy
 	RET
 
@@ -3082,13 +3066,13 @@ LB891:	LD HL,LB84F	; NEAR item address
 	CP (HL)
 	JR Z,LB8B0
 	LD (HL),A
-	LD (L74CD+1),A
-	LD DE,$001A
+	LD (DRITEM+1),A
+	LD DE,$1A00	; +26
 	LD A,$7B
 	CALL LB86C
-	CALL L74CD	; Draw NEAR/HELD item
+	CALL DRITEM	; Draw NEAR/HELD item
 	DI
-	LD DE,$FFE6	; -26
+	LD DE,$E600	; -26
 	LD A,$61
 	CALL LB86C
 LB8B0:	LD HL,LB850	; HELD tile address
@@ -3100,8 +3084,8 @@ LB8B0:	LD HL,LB850	; HELD tile address
 	JR Z,LB8C2
 	SUB $C6
 	SRL A
-LB8C2:	LD (L74CD+1),A
-	CALL L74CD	; Draw NEAR/HELD item
+LB8C2:	LD (DRITEM+1),A
+	CALL DRITEM	; Draw NEAR/HELD item
 	DI
 LB8C9:	XOR A
 	LD (LA39E),A
@@ -3116,7 +3100,7 @@ LB8D0:	CALL LBBBB	; Set update flags for Ninja, 6x7 tiles
 	LDIR
 
 ; Draw Ninja on tilemap
-LB8E0:	LD HL,(L9C42)	; get Ninja position in tilemap
+LB8E0:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD A,(L7239)	; get Ninja direction
 	CP $00		; left?
 	JR NZ,LB907
@@ -3305,7 +3289,7 @@ LBA32:	LD (HL),$01
 LBA52:	LD A,$10
 	;OUT ($FE),A
 	DEC (HL)
-LBA57:	LD HL,$40D0	; !!MUT-ARG!! address on the screen
+LBA57:	LD HL,$C0D0	; !!MUT-ARG!! address on the screen
 LBA5A:	LD DE,LABE5	; !!MUT-ARG!! Explosion image address
 LBA5D:	LD B,$03	; !!MUT-ARG!!
 LBA5F:	LD C,$03	; !!MUT-ARG!!
@@ -3340,7 +3324,7 @@ LBA67:	LD A,(DE)
 	RL H
 	POP DE
 	DJNZ LBA5F
-LBA8E:	LD HL,$58D0	; !!MUT-ARG!!
+LBA8E:	LD HL,$E8D0	; !!MUT-ARG!!
 LBA91:	LD B,$03
 	LD DE,$0020
 LBA96:	LD C,$03	; !!MUT-ARG!!
@@ -3356,7 +3340,7 @@ LBA99:	LD A,(HL)
 	ADD HL,DE
 	DJNZ LBA96
 	LD A,$72
-LBAA9:	LD ($58F1),A	; !!MUT-ARG!!
+LBAA9:	LD ($E8F1),A	; !!MUT-ARG!!
 	XOR A
 	;OUT ($FE),A
 	JP LB77B	; => Game loop start
@@ -3483,7 +3467,7 @@ LBBAE:	LD L,(IX+$01)
 	RET
 
 ; Set update flags for Ninja, 6x7 tiles
-LBBBB:	LD HL,(L9C42)	; get Ninja position in tilemap
+LBBBB:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,TLSCR1	; Tile screen 1 start address
 	ADD HL,DE
 	LD DE,$0018	; 24
@@ -3590,7 +3574,7 @@ LBC55:	LD HL,LB5C5	; Ninja standing counter address
 	DEC (HL)	; decrease counter
 	JR NZ,LBC76
 	LD (HL),$02	; reload the counter
-	LD A,(L749C)	; get Energy
+	LD A,(NRJ)	; get Energy
 	CP $13		; energy at MAX?
 	JR NZ,LBC6B
 	LD A,(L749D)	; get Energy lower
@@ -3621,17 +3605,17 @@ LBC98:	LD A,$D2
 	JR Z,LBC7E
 
 ; Check for suicide key combination
-LBC9D:	LD A,$FE
-	;IN A,($FE)
-	BIT 0,A		; check for CAPS SHIFT key
-	JR NZ,LBCB6	; not pressed => skip suicide
-	LD A,$7F
-	;IN A,($FE)
-	BIT 0,A		; check for "1" key
-	JR NZ,LBCB6	; not pressed => skip suicide
-	LD HL,LBEEF	; "SEPUKU" / "MISSION ABORTED"
-	LD (LBEB3+1),HL	; set two-line Game Over message
-	JP LBE5A	; => Ninja sit, and then fall and DIE
+LBC9D:	;LD A,$FE
+	;;IN A,($FE)
+	;BIT 0,A		; check for CAPS SHIFT key
+	;JR NZ,LBCB6	; not pressed => skip suicide
+	;LD A,$7F
+	;;IN A,($FE)
+	;BIT 0,A		; check for "1" key
+	;JR NZ,LBCB6	; not pressed => skip suicide
+	;LD HL,LBEEF	; "SEPUKU" / "MISSION ABORTED"
+	;LD (LBEB3+1),HL	; set two-line Game Over message
+	;JP LBE5A	; => Ninja sit, and then fall and DIE
 LBCB6:	CALL LC5A3	; Check for falling
 	JP Z,LC643	; => Ninja falling
 	LD HL,LB595
@@ -3653,7 +3637,7 @@ LBCCC:	LD HL,LB595	; action cooldown counter
 	CP $63
 	JR Z,LBD33	; => execute the object procedure
 	LD B,A
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,TLSCR0+217	; Tile screen 0 + 217
 	ADD HL,DE
 	LD A,$9C
@@ -3711,7 +3695,7 @@ LBD37:	LD HL,LA39F
 	CP $D6		; BOMB?
 	JP Z,LBDB2
 	LD (HL),A
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,$003D	; 61
 	ADD HL,DE
 	LD A,(L9C41)	; get Ninja X
@@ -3729,7 +3713,7 @@ LBD37:	LD HL,LA39F
 LBD6A:	LD A,B
 	LD (LA3A5),A
 	LD (LA3A0),HL
-	LD A,(L9C40)	; get Ninja Y
+	LD A,(NJAY)	; get Ninja Y
 	ADD A,$02
 	LD (LA3A4),A
 LBD79:	LD A,$C8	; !!MUT-ARG!!
@@ -3765,12 +3749,12 @@ LBDA2:	LD A,B
 LBDAF:	JP LC226	; => Ninja standing
 
 ; Routine at BDB2
-LBDB2:	LD HL,(L9C42)	; get Ninja position in tilemap
-	LD DE,TLSCR4+34	; $6DAA = $6D88 (Tile screen 4) + 34 for right
+LBDB2:	LD HL,(NJAPOS)	; get Ninja position in tilemap
+	LD DE,TLSCR4+34	; Tile screen 4 + 34 for right
 	LD A,(L7239)	; get Ninja direction
 	CP $01		; right?
 	JR Z,LBDC2	; right =>
-	LD DE,TLSCR4+31	; $6DA7 = $6D88 (Tile screen 4) + 31 for left
+	LD DE,TLSCR4+31	; Tile screen 4 + 31 for left
 LBDC2:	ADD HL,DE	; now HL = address in Guard tilemap
 	LD A,(HL)	; get tile
 	INC A		; empty tile?
@@ -3788,7 +3772,7 @@ LBDD4:	LD HL,LBBD4	; Movement handler address
 LBDDD:	BIT 3,A
 	JP Z,LBFBA
 	LD HL,TLSCR0+30
-	LD DE,(L9C42)	; get Ninja position in tilemap
+	LD DE,(NJAPOS)	; get Ninja position in tilemap
 	ADD HL,DE
 	LD A,$DA
 	CP (HL)
@@ -3804,8 +3788,8 @@ LBDDD:	BIT 3,A
 	LD DE,LD486	; Sprite Ninja/Guard standing
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
 
-; ?? Movement handler
-LBE0D:	LD HL,$65B1	; !!MUT-ARG!!
+; Movement handler: opening the roof in the helicopter room
+LBE0D:	LD HL,TLSCR0	; !!MUT-ARG!!
 	LD A,$01
 	LD (HL),A
 	DEC HL
@@ -3833,7 +3817,7 @@ LBE3A:	LD (HL),A
 	INC HL
 	DJNZ LBE3A
 	LD HL,$0110
-	LD (L9C42),HL	; set Ninja position in tilemap
+	LD (NJAPOS),HL	; set Ninja position in tilemap
 	LD HL,TLSCR1+210
 	LD DE,TLSCR1+211
 	LD BC,$00D1	; 210 - 1 = 7 rows
@@ -3896,22 +3880,22 @@ LBEAA:	POP HL
 
 ; Movement handler: Game Over
 LBEB3:	LD HL,LBEEF	; !!MUT-ARG!! two-line message address
-	LD DE,$C068
+	LD DE,$C8DF
 	LD C,$0F
 	CALL PRSTR	; Print string 1st line
-	LD DE,$C0A6
+	LD DE,$C6CF
 	LD C,$14
 	CALL PRSTR	; Print string 2nd line
-	LD HL,$E868 ;TODO
-	LD B,$0F
-LBECB:	LD (HL),$0F
-	INC HL
-	DJNZ LBECB
-	LD HL,$E8A6 ;TODO
-	LD B,$14
-LBED5:	LD (HL),$0F
-	INC HL
-	DJNZ LBED5
+	;LD HL,$E868
+	;LD B,$0F
+LBECB:	;LD (HL),$0F	; set attribute
+	;INC HL
+	;DJNZ LBECB
+	;LD HL,$E8A6
+	;LD B,$14
+LBED5:	;LD (HL),$0F
+	;INC HL
+	;DJNZ LBED5
 	CALL LF9B9	; Pause, then wait for any key pressed
 	NOP
 	NOP
@@ -3970,7 +3954,7 @@ LBFB0:	LD (LB8CD+1),HL
 ; Routine at BFBA
 LBFBA:	BIT 2,A
 	JP Z,LC13D
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,TLSCR0+212
 	ADD HL,DE
 	CALL LC392
@@ -4050,8 +4034,8 @@ LC094:	LD HL,L7343	; counter address
 	JP Z,LBFD5	; zero => Escaped; final messages, then Game Over
 	LD A,$10
 	;OUT ($FE),A
-	LD HL,$4047
-	LD DE,$4027
+	LD HL,$C047 ;TODO
+	LD DE,$C027
 	LD C,$0F
 LC0A7:	PUSH HL
 	PUSH DE
@@ -4144,18 +4128,18 @@ LC171:	DEFB $3A,$40,$9C,$FE,$00,$CA,$26,$C2
 LC1B6:	LD A,(L9C41)	; get Ninja X
 	CP $18		; 24 ?
 	JP Z,LC2FA	; => Going to room at Right
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,TLSCR0+184
 	ADD HL,DE
 	LD A,$64
 	CP (HL)
 	JR NC,LC1DA
-	LD HL,L9C40	; Ninja Y address
+	LD HL,NJAY	; Ninja Y address
 	DEC (HL)	; one row up
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,$FFE2	; -30
 	ADD HL,DE
-	LD (L9C42),HL	; set Ninja position in tilemap
+	LD (NJAPOS),HL	; set Ninja position in tilemap
 	JR LC20D
 LC1DA:	LD DE,$FFE3	; -29
 	ADD HL,DE
@@ -4173,20 +4157,20 @@ LC1EE:	LD DE,$003B	; +59
 	DEC HL
 	CP (HL)
 	JR C,LC20D
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,$001E	; +30
 	ADD HL,DE
-	LD (L9C42),HL	; set Ninja position in tilemap
-	LD HL,L9C40	; Ninja Y address
+	LD (NJAPOS),HL	; set Ninja position in tilemap
+	LD HL,NJAY	; Ninja Y address
 	INC (HL)	; one row down
 	LD A,(HL)
 	CP $0A		; at the room bottom?
 	JP Z,LC604	; yes => Going to room Down from current
 LC20D:	LD HL,L9C41	; Ninja X address
 	INC (HL)
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	INC HL		; move one tile to right
-	LD (L9C42),HL	; set Ninja position in tilemap
+	LD (NJAPOS),HL	; set Ninja position in tilemap
 	CALL LC5A3	; Check for falling
 	JP Z,LC643	; => Ninja falling
 	CALL LBBDF	; Read Input
@@ -4203,7 +4187,7 @@ LC22F:	CALL LBBDF	; Read Input
 	BIT 2,A		; check DOWN bit
 	JR NZ,LC239	; still pressed =>
 	JP LC226	; DOWN key released => stand up
-LC239:	LD HL,(L9C42)	; get Ninja position in tilemap
+LC239:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,TLSCR5+182
 	ADD HL,DE
 	LD A,$0C
@@ -4212,22 +4196,22 @@ LC239:	LD HL,(L9C42)	; get Ninja position in tilemap
 	CALL Z,NRJDEC	; => Decrease Energy by B
 	JP LC16E	; => Object procedure
 
-; Movement handler (B8CE handler): Ninja walking
+; Movement handler: Ninja walking
 LC24B:	LD A,(L9C41)	; get Ninja X
 	CP $00		; at very left?
 	JP Z,LC319	; => Going to room at Left
-	LD HL,(L9C42)	; get Ninja position in tilemap
-	LD DE,TLSCR0+181	; = $6590 (Tile screen 0) + 181
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
+	LD DE,TLSCR0+181	; Tile screen 0 + 181
 	ADD HL,DE
 	LD A,$64
 	CP (HL)
 	JR NC,LC26F
-	LD HL,L9C40	; Ninja Y address
+	LD HL,NJAY	; Ninja Y address
 	DEC (HL)	; moving one row up
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,$FFE2	; -30
 	ADD HL,DE	; one row up
-	LD (L9C42),HL	; set Ninja position in tilemap
+	LD (NJAPOS),HL	; set Ninja position in tilemap
 	JR LC2A2
 LC26F:	LD DE,$FFE1	; -31
 	ADD HL,DE
@@ -4245,20 +4229,20 @@ LC283:	LD DE,$003D	; +61
 	INC HL
 	CP (HL)
 	JR C,LC2A2
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,$001E	; +30
 	ADD HL,DE
-	LD (L9C42),HL	; set Ninja position in tilemap
-	LD HL,L9C40	; Ninja Y address
+	LD (NJAPOS),HL	; set Ninja position in tilemap
+	LD HL,NJAY	; Ninja Y address
 	INC (HL)	; moving one row down
 	LD A,(HL)
 	CP $0A		; at room bottom?
 	JP Z,LC604	; => Going to room Down from current
 LC2A2:	LD HL,L9C41	; Ninja X address
 	DEC (HL)	; moving one tile left
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	DEC HL		; moving one tile left
-	LD (L9C42),HL	; set Ninja position in tilemap
+	LD (NJAPOS),HL	; set Ninja position in tilemap
 	CALL LC5A3	; Check for falling
 	JP Z,LC643	; => Ninja falling
 	CALL LBBDF	; Read Input
@@ -4304,9 +4288,9 @@ LC2E8:	LD H,$00
 LC2FA:	XOR A
 	LD (L9C41),A	; set Ninja X = 0
 	LD DE,$FFE8	; -24
-	LD HL,(L9C42)
+	LD HL,(NJAPOS)
 	ADD HL,DE	; update Ninja position in tilemap
-	LD (L9C42),HL
+	LD (NJAPOS),HL
 	LD HL,(ROOM)	; get Current Room address
 	LD DE,$0006	; offset in Room description
 	ADD HL,DE
@@ -4321,9 +4305,9 @@ LC2FA:	XOR A
 LC319:	LD A,$18
 	LD (L9C41),A	; set Ninja X = 24
 	LD DE,$0018	; +24
-	LD HL,(L9C42)
+	LD HL,(NJAPOS)
 	ADD HL,DE	; update Ninja position in tilemap
-	LD (L9C42),HL
+	LD (NJAPOS),HL
 	LD HL,(ROOM)	; get Current Room address
 	LD DE,$0004	; offset in Room description
 	ADD HL,DE
@@ -4339,8 +4323,8 @@ LC339:	LD HL,L7343	; counter address
 	DEC (HL)	; decrease counter
 	JP NZ,LB8D0	; => Update Ninja on tilemap
 	LD A,(L7239)	; get Ninja direction
-	LD HL,(L9C42)	; get Ninja position in tilemap
-	LD DE,TLSCR0+2	; $6592 = $6590 (Tile screen 0) + 2
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
+	LD DE,TLSCR0+2	; Tile screen 0 + 2
 	ADD HL,DE
 	CP $00		; direction = left ?
 	JR NZ,LC361	; no =>
@@ -4361,7 +4345,7 @@ LC361:	INC HL
 LC368:	CALL LC392
 	JR Z,LC3C6	; => Ninja on ladder
 	LD DE,TLSCR0+60
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD A,(L7239)	; get Ninja direction
 	CP $00		; left ?
 	JR Z,LC37D
@@ -4403,10 +4387,10 @@ LC3B7:	LD A,$01
 ; Move LEFT one tile
 LC3BB:	LD HL,L9C41	; Ninja X address
 	DEC (HL)	; one tile to left
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	DEC HL		; move one tile left
 ; Entry point
-LC3C3:	LD (L9C42),HL	; set Ninja position in tilemap
+LC3C3:	LD (NJAPOS),HL	; set Ninja position in tilemap
 ; Ninja on ladder now
 LC3C6:	LD HL,LC3D9	; Movement handler for Ninja on ladder
 	LD DE,LD52E	; Sprite Ninja on ladder
@@ -4415,13 +4399,13 @@ LC3C6:	LD HL,LC3D9	; Movement handler for Ninja on ladder
 ; Move RIGHT one tile
 LC3CF:	LD HL,L9C41	; Ninja X address
 	INC (HL)	; one tile to right
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	INC HL		; move one tile right
 	JR LC3C3	; => Set Ninja position in tilemap; Ninja on ladder
 
 ; Movement handler (B8CE handler): Ninja on ladder
-LC3D9:	LD HL,(L9C42)	; get Ninja position in tilemap
-	LD DE,TLSCR0+183	; = $6590 (Tile screen 0) + 183
+LC3D9:	LD HL,(NJAPOS)	; get Ninja position in tilemap
+	LD DE,TLSCR0+183	; Tile screen 0 + 183
 	ADD HL,DE
 	LD A,$0C
 	CP (HL)		; ladder?
@@ -4436,8 +4420,8 @@ LC3EC:	CALL LBBDF	; Read Input
 	JR Z,LC40E
 
 ; Pressed RIGHT
-LC3F3:	LD HL,(L9C42)	; get Ninja position in tilemap
-	LD DE,TLSCR0+184	; = $6590 (Tile screen 0) + 184
+LC3F3:	LD HL,(NJAPOS)	; get Ninja position in tilemap
+	LD DE,TLSCR0+184	; Tile screen 0 + 184
 	ADD HL,DE
 	LD A,$64
 	CP (HL)
@@ -4455,8 +4439,8 @@ LC40E:	BIT 1,A		; check LEFT bit
 	JR Z,LC42C
 
 ; Pressed LEFT
-LC412:	LD HL,(L9C42)	; get Ninja position in tilemap
-	LD DE,TLSCR0+181	; = $6590 (Tile screen 0) + 181
+LC412:	LD HL,(NJAPOS)	; get Ninja position in tilemap
+	LD DE,TLSCR0+181	; Tile screen 0 + 181
 	ADD HL,DE
 	LD A,$64
 	CP (HL)
@@ -4475,7 +4459,7 @@ LC42C:	LD A,(L7232)	; get Input bits
 	JR Z,LC477
 
 ; Pressed UP
-LC433:	LD HL,(L9C42)	; get Ninja position in tilemap
+LC433:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,TLSCR0+183
 	ADD HL,DE
 	LD A,$0C
@@ -4485,7 +4469,7 @@ LC433:	LD HL,(L9C42)	; get Ninja position in tilemap
 	CALL LC392
 	JR Z,LC447
 	JR LC495	; => Update Ninja on tilemap
-LC447:	LD A,(L9C40)	; get Ninja Y
+LC447:	LD A,(NJAY)	; get Ninja Y
 	CP $00		; top row?
 	JP Z,LC623	; yes => Going to room Up from current
 	LD DE,$FF2E	; -210 = 7 rows higher
@@ -4496,13 +4480,13 @@ LC447:	LD A,(L9C40)	; get Ninja Y
 	LD A,$FF
 	CP (HL)
 	JR Z,LC495	; => Update Ninja on tilemap
-	LD HL,L9C40	; Ninja Y address
+	LD HL,NJAY	; Ninja Y address
 	DEC (HL)	; one row up
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,$FFE2	; -30
 ; Entry point
 LC467:	ADD HL,DE
-	LD (L9C42),HL	; set Ninja position in tilemap
+	LD (NJAPOS),HL	; set Ninja position in tilemap
 	LD A,(L7239)	; get Ninja direction
 	INC A		; invert direction
 	AND $01
@@ -4514,10 +4498,10 @@ LC477:	BIT 2,A		; check DOWN bit
 	JR Z,LC495	; => Update Ninja on tilemap
 
 ; Pressed DOWN
-LC47B:	LD A,(L9C40)	; get Ninja Y
+LC47B:	LD A,(NJAY)	; get Ninja Y
 	CP $0A
 	JP Z,LC604	; => Going to room Down from current
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,TLSCR0+213
 	ADD HL,DE
 	LD A,$0C
@@ -4529,9 +4513,9 @@ LC47B:	LD A,(L9C40)	; get Ninja Y
 LC495:	JP LB8D0	; => Update Ninja on tilemap
 
 ; Move DOWN one tile
-LC498:	LD HL,L9C40	; Ninja Y address
+LC498:	LD HL,NJAY	; Ninja Y address
 	INC (HL)	; one tile down
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,$001E	; +30
 	JR LC467	; => set Ninja position = HL, invert direction, Object procedure
 
@@ -4542,12 +4526,12 @@ LC4A4:	LD A,(L7239)	;get Ninja direction
 LC4A7:	LD HL,L7343	; counter address
 	DEC (HL)	; decrease counter
 	JP NZ,LB8D0	; => Update Ninja on tilemap
-	LD HL,(L9C42)	; get Ninja position in tilemap
-	LD DE,TLSCR4+65	; value for right dir = $6D88 (Tile screen 4) + 65
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
+	LD DE,TLSCR4+65	; value for right dir = Tile screen 4 + 65
 	LD A,(L7239)	; get Ninja direction
 	CP $01		; direction = right?
 	JR Z,LC4BE
-	LD DE,TLSCR4+60	; value for left dir = $6D88 (Tile screen 4) + 60
+	LD DE,TLSCR4+60	; value for left dir = Tile screen 4 + 60
 LC4BE:	ADD HL,DE
 	LD A,(HL)
 	INC A		; = $FF ?
@@ -4597,9 +4581,9 @@ LC50D:	LD A,(L7239)	; get Ninja direction
 	CP $00
 	JP Z,LC319	; => Going to room at Left
 	DEC (HL)
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	DEC HL
-	LD (L9C42),HL	; set Ninja position in tilemap
+	LD (NJAPOS),HL	; set Ninja position in tilemap
 LC525:	CALL LC57B	; Check for ??
 	JR NZ,LC533
 	LD HL,L7343	; counter address
@@ -4610,19 +4594,19 @@ LC533:	LD B,$04
 	CALL NRJDEC	; Decrease Energy by B
 LC538:	LD DE,TLSCR0+122
 	LD B,$03
-LC53D:	LD HL,(L9C42)	; get Ninja position in tilemap
+LC53D:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	ADD HL,DE
 	LD A,$64
 	CP (HL)
 	JR NC,LC558
-LC546:	LD HL,L9C40	; Ninja Y address
+LC546:	LD HL,NJAY	; Ninja Y address
 	DEC (HL)
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	PUSH DE
 	LD DE,$FFE2	; -30
 	ADD HL,DE
 	POP DE
-	LD (L9C42),HL	; set Ninja position in tilemap
+	LD (NJAPOS),HL	; set Ninja position in tilemap
 	JR LC53D
 LC558:	INC HL
 	CP (HL)
@@ -4637,9 +4621,9 @@ LC558:	INC HL
 LC56C:	CP $18
 	JP Z,LC2FA	; => Going to room at Right
 	INC (HL)
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	INC HL
-	LD (L9C42),HL	; set Ninja position in tilemap
+	LD (NJAPOS),HL	; set Ninja position in tilemap
 	JR LC525
 
 ; Routine at C57B
@@ -4650,7 +4634,7 @@ LC57B:	LD A,(L7239)	; get Ninja direction
 	ADD A,L		; * 5
 	LD L,A
 	LD H,$00
-	LD DE,(L9C42)	; get Ninja position in tilemap
+	LD DE,(NJAPOS)	; get Ninja position in tilemap
 	ADD HL,DE
 	LD DE,TLSCR0	; Tile screen 0 start address
 	ADD HL,DE
@@ -4670,7 +4654,7 @@ LC59A:	ADD HL,DE
 LC5A0:	JP LC226	; => Ninja standing
 
 ; Check for falling
-LC5A3:	LD HL,(L9C42)	; get Ninja position in tilemap
+LC5A3:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,$00D3
 	ADD HL,DE
 	LD DE,TLSCR0	; Tile screen 0 start address
@@ -4692,19 +4676,19 @@ LC5C0:	INC HL
 	RET
 
 ; Movement handler: Ninja falling down
-LC5C6:	LD HL,(L9C42)	; get Ninja position in tilemap
-	LD DE,$001E	; +30
+LC5C6:	LD HL,(NJAPOS)	; get Ninja position in tilemap
+	LD DE,30	; +30
 	ADD HL,DE	; one row lower
-	LD (L9C42),HL	; set Ninja position in tilemap
-	LD HL,L755B	; falling counter address
+	LD (NJAPOS),HL	; set Ninja position in tilemap
+	LD HL,NJAFAL	; falling counter address
 	INC (HL)	; increase falling counter
-	LD HL,L9C40	; Ninja Y address
+	LD HL,NJAY	; Ninja Y address
 	INC (HL)	; increase Ninja Y
 	LD A,(HL)	; get Ninja Y
 	CP $0A		; at room bottom?
 	JR Z,LC604	; => Going to room Down from current
-	LD HL,(L9C42)	; get Ninja position in tilemap
-	LD DE,TLSCR0+212
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
+	LD DE,TLSCR0+212	; + Tile screen 0 + 7 rows + 2
 	ADD HL,DE
 	LD A,$64
 	CP (HL)
@@ -4712,24 +4696,25 @@ LC5C6:	LD HL,(L9C42)	; get Ninja position in tilemap
 	INC HL
 	CP (HL)
 	JP NC,LB8D0	; => Update Ninja on tilemap
+
 ; Ninja hit somehting after falling
 LC5EE:	LD A,$01
 	LD (LA39E),A
-	LD HL,L755B	; falling counter address
+	LD HL,NJAFAL	; falling counter address
 	LD B,(HL)	; get counter value
 	LD (HL),$00	; clear falling counter
 	CALL NRJDEC	; Decrease Energy by B
 	LD B,$32
-	CALL LB59E
+	CALL LB59E	; Sound ??
 	JP LBFCC	; => Ninja sitting now
 
 ; Going to room Down from current
 LC604:	XOR A
-	LD (L9C40),A	; set Ninja Y = 0
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD (NJAY),A	; set Ninja Y = 0
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,$FED4	; -300
 	ADD HL,DE	; 10 rows higher
-	LD (L9C42),HL	; set Ninja position in tilemap
+	LD (NJAPOS),HL	; set Ninja position in tilemap
 	LD HL,(ROOM)	; get Current Room address
 	LD DE,$000A	; offset in room description
 	ADD HL,DE	; now HL = room address + 10
@@ -4742,11 +4727,11 @@ LC604:	XOR A
 
 ; Going to room Up from current
 LC623:	LD A,$0A
-	LD (L9C40),A	; set Ninja Y = 10
-	LD HL,(L9C42)	; get Ninja position in tilemap
+	LD (NJAY),A	; set Ninja Y = 10
+	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,$012C	; +300
 	ADD HL,DE	; 10 rows lower
-	LD (L9C42),HL	; set Ninja position in tilemap
+	LD (NJAPOS),HL	; set Ninja position in tilemap
 	LD HL,(ROOM)	; get Current Room address
 	LD DE,$0008	; offset in room description
 	ADD HL,DE	; now HL = room address + 8
@@ -4779,17 +4764,17 @@ LC66B:	DEFB $0E,$00,$0E,$00,$04,$00
 
 ; Room 93DF/947C (room right from Train) initialization
 LC671:	LD HL,L947C	; room 947C at left of Train 1
-	LD (L7CA0),HL	; set "room to left" for room 7C9C
+	LD (L7C9C+4),HL	; set "room to left" for room 7C9C
 	LD HL,L93DF	; room 93DF at right of Train 1
-	LD (L7CA2),HL	; set "room to right" for room 7C9C
+	LD (L7C9C+6),HL	; set "room to right" for room 7C9C
 	LD A,$6C	; tile for "1" sign
 	JR LC68F
 
 ; Room 982B initialization
 LC681:	LD HL,L9A1E	; room 9A1E at left of Train 2
-	LD (L7CA0),HL	; set "room to left" for room 7C9C
+	LD (L7C9C+4),HL	; set "room to left" for room 7C9C
 	LD HL,L982B	; room 982B at right of Train 2
-	LD (L7CA2),HL	; set "room to right" for room 7C9C
+	LD (L7C9C+6),HL	; set "room to right" for room 7C9C
 	LD A,$75	; tile for "2" sign
 
 ; Fill 3x3 block with tile for "1"/"2" sign
@@ -4812,7 +4797,7 @@ LC6A5:	LD A,(L9C41)	; get Ninja X
 	JP NZ,LB937	; => Standard room procedure
 	LD A,$4B
 	LD (L7343),A	; set counter = 75
-	LD DE,(L9C42)	; get Ninja position in tilemap
+	LD DE,(NJAPOS)	; get Ninja position in tilemap
 	LD A,(L9C41)	; get Ninja X
 	INC A
 	LD B,A
@@ -4828,7 +4813,7 @@ LC6A5:	LD A,(L9C41)	; get Ninja X
 	DEC DE
 LC6CD:	LD A,B
 	LD (L9C41),A	; set Ninja X
-	LD (L9C42),DE	; set Ninja position in tilemap
+	LD (NJAPOS),DE	; set Ninja position in tilemap
 	LD DE,LD486	; Sprite Ninja/Guard standing
 	LD (L7186),DE	; set Ninja sprite
 	LD (LB8CD+1),HL	; set Movement handler
@@ -4881,179 +4866,178 @@ LD210:	DEFB $04,$CE,$09,$63,$09,$63,$09,$63,$09,$63
 	DEFB $04,$CE,$04,$CE,$04,$CE,$04,$CE,$04,$CE
 
 ; Table of objects, 35 records, 7 bytes each
+; +$00/$01: Object tile address
 ; +$03: Object tile unique, to identify the object
 ; +$04: Object item, for NEAR indicator
 ; +$05: Object tile as object type
 ; +$05/$06: Object procedure, or $0000
-LD256:	DEFW $6F02	; Object ?? 00
+LD256:	DEFW TLSCR0+2418	; Object 00: Brick
 	DEFB $58,$04,$CE
-	DEFW $0000
-	DEFW $6664	; Object: Console in room 80F6
+	DEFW 0
+	DEFW TLSCR0+212	; Object: Console in room 80F6
 	DEFB $7C,$09,$63
-	DEFW $B320	; Object procedure: flip trigger "D": set/remove wall in room 9739
-	DEFW $6664	; Object: Console in room 99A6
+	DEFW LB320	; Object procedure: flip trigger "D": set/remove wall in room 9739
+	DEFW TLSCR0+212	; Object: Console in room 99A6
 	DEFB $7D,$09,$63
-	DEFW $B32A	; Object procedure: flip trigger "E": set/remove wall in room 97A6
-	DEFW $6664	; Object: Console in room 92A7
+	DEFW LB32A	; Object procedure: flip trigger "E": set/remove wall in room 97A6
+	DEFW TLSCR0+212	; Object: Console in room 92A7
 	DEFB $7E,$09,$63
-	DEFW $B348	; Object procedure: flip trigger "A": set/remove wall in room 7F48
-	DEFW $6664	; Object: Console in room 92EF
+	DEFW LB348	; Object procedure: flip trigger "A": set/remove wall in room 7F48
+	DEFW TLSCR0+212	; Object: Console in room 92EF
 	DEFB $7F,$09,$63
-	DEFW $B334	; Object procedure: flip trigger "C": set/remove wall in room 8D5C
-	DEFW $6664	; Object: Console in room 9005
+	DEFW LB334	; Object procedure: flip trigger "C": set/remove wall in room 8D5C
+	DEFW TLSCR0+212	; Object: Console in room 9005
 	DEFB $80,$09,$63
-	DEFW $B33E	; Object procedure: flip trigger "B": set/remove wall in room 8F20
-	DEFW $6FE2	; Object ?? 06
+	DEFW LB33E	; Object procedure: flip trigger "B": set/remove wall in room 8F20
+	DEFW TLSCR0+2642	; Object ?? 06
 	DEFB $1F,$09,$63
-LD285:	DEFW $B8D0	; Object procedure "Update Ninja on tilemap"
-LD287:	DEFW $6669	; Object ?? 07 Diskette
+LD285:	DEFW LB8D0	; Object procedure "Update Ninja on tilemap"
+LD287:	DEFW TLSCR0+217	; Object ?? 07 Diskette
 	DEFB $9C,$09,$D4
-	DEFW $0000
-	DEFW $659B	; Object ?? 08
+	DEFW 0
+	DEFW TLSCR0+11	; Object ?? 08
 	DEFB $9A,$05,$D0
-	DEFW $0000
-	DEFW $6750	; Object ?? 09
+	DEFW 0
+	DEFW TLSCR0+448	; Object ?? 09
 	DEFB $38,$05,$D0
-	DEFW $0000
-	DEFW $6664	; Object ?? 10
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 10
 	DEFB $81,$05,$D0
-	DEFW $0000
-	DEFW $6664	; Object ?? 11
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 11
 	DEFB $65,$06,$D2
-	DEFW $0000
-	DEFW $6664	; Object ?? 12 BOMB ??
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 12
 	DEFB $66,$08,$D6
-	DEFW $0000
-	DEFW $6664	; Object ?? 13
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 13
 	DEFB $67,$02,$CA
-	DEFW $0000
-	DEFW $6664	; Object ?? 14
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 14
 	DEFB $68,$03,$CC
-	DEFW $0000
-	DEFW $6664	; Object ?? 15
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 15
 	DEFB $69,$05,$D0
-	DEFW $0000
-	DEFW $6664	; Object ?? 16
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 16
 	DEFB $6A,$05,$D0
-	DEFW $0000
-	DEFW $6664	; Object ?? 17
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 17
 	DEFB $6B,$05,$D0
-	DEFW $0000
-	DEFW $6664	; Object ?? 18
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 18
 	DEFB $6C,$03,$CC
-	DEFW $0000
-	DEFW $6664	; Object ?? 19
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 19
 	DEFB $6D,$02,$CA
-	DEFW $0000
-	DEFW $6664	; Object ?? 20
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 20
 	DEFB $6D,$02,$CA
-	DEFW $0000
-	DEFW $6664	; Object ?? 21
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 21
 	DEFB $6E,$03,$CC
-	DEFW $0000
-	DEFW $6664	; Object ?? 22
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 22
 	DEFB $6F,$02,$CA
-	DEFW $0000
-LD2F7:	DEFW $6664	; Object ?? 23
+	DEFW 0
+LD2F7:	DEFW TLSCR0+212	; Object 23: Granade
 	DEFB $70,$06,$D2
-	DEFW $0000
-	DEFW $6664	; Object ?? 24
+	DEFW 0
+	DEFW TLSCR0+212	; Object 24: Knife
 	DEFB $71,$02,$CA
-	DEFW $0000
-	DEFW $6664	; Object ?? 25
+	DEFW 0
+	DEFW TLSCR0+212	; Object 25: Granade
 	DEFB $72,$06,$D2
-	DEFW $0000
-	DEFW $6664	; Object ?? 26
+	DEFW 0
+	DEFW TLSCR0+212	; Object 26: Knife
 	DEFB $73,$02,$CA
-	DEFW $0000
-	DEFW $6664	; Object ?? 27
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 27
 	DEFB $74,$03,$CC
-	DEFW $0000
-	DEFW $6664	; Object ?? 28
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 28
 	DEFB $75,$03,$CC
-	DEFW $0000
-	DEFW $6664	; Object ?? 29
+	DEFW 0
+	DEFW TLSCR0+212	; Object ?? 29
 	DEFB $76,$03,$CC
-	DEFW $0000
-	DEFW $6664	; Object ?? 30
+	DEFW 0
+	DEFW TLSCR0+212	; Object 30: Brick
 	DEFB $77,$04,$CE
-	DEFW $0000
-	DEFW $6664	; Object ?? 31
+	DEFW 0
+	DEFW TLSCR0+212	; Object 31: Brick
 	DEFB $78,$04,$CE
-	DEFW $0000
-	DEFW $6664	; Object ?? 32
+	DEFW 0
+	DEFW TLSCR0+212	; Object 32: Brick
 	DEFB $79,$04,$CE
-	DEFW $0000
-	DEFW $6664	; Object ?? 33
+	DEFW 0
+	DEFW TLSCR0+212	; Object 33: Brick
 	DEFB $7A,$04,$CE
-	DEFW $0000
-	DEFW $6664	; Object ?? 34
+	DEFW 0
+	DEFW TLSCR0+212	; Object 34: Brick
 	DEFB $7B,$04,$CE
-	DEFB $00,$00
-
-LD34B:	DEFW $6664
+	DEFW 0
 
 ; Table of objects, 29 records, 5 bytes each
 ; +$00/$01: room address
 ; +$02/$03: address in Tile screen 0
 ; +$04: tile byte
-LD34D:	DEFW $9ED9,$66DF
+LD34D:	DEFW L9ED9, TLSCR0+335	; Object ?? 00
 	DEFB $81
-	DEFW $9E22,$671C
+	DEFW L9E22, TLSCR0+396	; Object ?? 01
 	DEFB $65
-LD357:	DEFW $9E22,$672E	; BOMB, placement depends on Level
+LD357:	DEFW L9E22, TLSCR0+414	; BOMB, placement depends on Level
 	DEFB $66
-	DEFW $990D,$6787
+	DEFW L990D, TLSCR0+503	; Object ?? 03
 	DEFB $67
-	DEFW $8D5C,$6767
+	DEFW L8D5C, TLSCR0+471	; Object ?? 04
 	DEFB $68
-	DEFW $8EE1,$675E
+	DEFW L8EE1, TLSCR0+462	; Object ?? 05
 	DEFB $69
-	DEFW $889F,$66DC
+	DEFW L889F, TLSCR0+332	; Object ?? 06
 	DEFB $6A
-	DEFW $890E,$6699
+	DEFW L890E, TLSCR0+265	; Object ?? 07
 	DEFB $6B
-	DEFW $8CC8,$6782
+	DEFW L8CC8, TLSCR0+498	; Object ?? 08
 	DEFB $6C
-	DEFW $8739,$66AA	; #10
+	DEFW L8739, TLSCR0+282	; Object ?? 09
 	DEFB $6D
-	DEFW $8799,$6757
+	DEFW L8799, TLSCR0+455	; Object ?? 10
 	DEFB $6E
-	DEFW $913F,$6782
+	DEFW L913F, TLSCR0+498	; Object ?? 11
 	DEFB $6F
-	DEFW $8321,$6777
+	DEFW L8321, TLSCR0+487	; Object ?? 12
 	DEFB $70
-	DEFW $8162,$6782
+	DEFW L8162, TLSCR0+498	; Object ?? 13
 	DEFB $71
-	DEFW $7EF2,$6788
+	DEFW L7EF2, TLSCR0+504	; Object ?? 14
 	DEFB $72
-	DEFW $7F48,$6744
+	DEFW L7F48, TLSCR0+436	; Object ?? 15
 	DEFB $73
-	DEFW $7C6D,$6747
+	DEFW L7C6D, TLSCR0+439	; Object ?? 16
 	DEFB $74
-	DEFW $7A9E,$675D
+	DEFW L7A9E, TLSCR0+461	; Object ?? 17
 	DEFB $75
-	DEFW $7A9E,$6767
+	DEFW L7A9E, TLSCR0+471	; Object ?? 18
 	DEFB $76
-	DEFW $7A9E,$6769	; #20
+	DEFW L7A9E, TLSCR0+473	; Object ?? 19
 	DEFB $77
-	DEFW $7AF8,$6785
+	DEFW L7AF8, TLSCR0+501	; Object ?? 20
 	DEFB $78
-	DEFW $7AF8,$6786
+	DEFW L7AF8, TLSCR0+502	; Object ?? 21
 	DEFB $79
-	DEFW $9376,$673B
+	DEFW L9376, TLSCR0+427	; Object ?? 22
 	DEFB $7A
-	DEFW $79C6,$6785
+	DEFW L79C6, TLSCR0+501	; Object ?? 23
 	DEFB $7B
-	DEFW $80F6,$6773	; Console in room 80F6
+	DEFW L80F6, TLSCR0+483	; Console in room 80F6
 	DEFB $7C
-	DEFW $99A6,$6783	; Console in room 99A6
+	DEFW L99A6, TLSCR0+499	; Console in room 99A6
 	DEFB $7D
-	DEFW $92A7,$675D	; Console in room 92A7, see D26B
+	DEFW L92A7, TLSCR0+461	; Console in room 92A7, see D26B
 	DEFB $7E
-	DEFW $92EF,$6668	; Console in room 92EF
+	DEFW L92EF, TLSCR0+216	; Console in room 92EF
 	DEFB $7F
-	DEFW $9005,$66B5	; Console in room 9005
+	DEFW L9005, TLSCR0+293	; Console in room 9005
 	DEFB $80
 
 ;----------------------------------------------------------------------------
@@ -5330,7 +5314,7 @@ LE097:	CALL LDFE6	; Unhighlight Menu item
 	LD DE,$E8CD ;TODO
 	LD BC,L7223
 	EXX
-	LD DE,$40D5
+	LD DE,$C0D5 ;TODO
 	LD B,$05
 	LD IX,LE043
 LE0F4:	PUSH BC
@@ -5619,7 +5603,7 @@ LE38C:	DEFB $14,$19,$32
 	DEFM " 10"
 	DEFB $0A
 	DEFW L9E22
-	DEFW $672E
+	DEFW TLSCR0+414
 ; Level 2 "VERY EASY"
 LE3A0:	DEFB $12,$0F,$2D
 	DEFM "9995"
@@ -5627,7 +5611,7 @@ LE3A0:	DEFB $12,$0F,$2D
 	DEFM " 20"
 	DEFB $14
 	DEFW L9E22
-	DEFW $672E
+	DEFW TLSCR0+414
 ; Level 3 "EASY"
 LE3B4	DEFB $10,$0C,$28
 	DEFM "9590"
@@ -5635,7 +5619,7 @@ LE3B4	DEFB $10,$0C,$28
 	DEFM " 30"
 	DEFB $1E
 	DEFW L924E
-	DEFW $6788
+	DEFW TLSCR0+504
 ; Level 4 "SLIGHTLY EASY"
 LE3C8	DEFB $0E,$0A,$23
 	DEFM "9080"
@@ -5643,7 +5627,7 @@ LE3C8	DEFB $0E,$0A,$23
 	DEFM " 50"
 	DEFB $32
 	DEFW L8608
-	DEFW $6787
+	DEFW TLSCR0+503
 ; Level 5 "MODERATE"
 LE3DC	DEFB $0C,$09,$1E
 	DEFM "9070"
@@ -5651,7 +5635,7 @@ LE3DC	DEFB $0C,$09,$1E
 	DEFM " 70"
 	DEFB $46
 	DEFW L8689
-	DEFW $66D2
+	DEFW TLSCR0+322
 ; Level 6 "SLIGHTLY HARD"
 LE3F0	DEFB $0A,$07,$19
 	DEFM "8560"
@@ -5659,7 +5643,7 @@ LE3F0	DEFB $0A,$07,$19
 	DEFM "100"
 	DEFB $64
 	DEFW L8BAB
-	DEFW $6780
+	DEFW TLSCR0+496
 ; Level 7 "HARD"
 LE404	DEFB $08,$06,$14
 	DEFM "8550"
@@ -5667,7 +5651,7 @@ LE404	DEFB $08,$06,$14
 	DEFM "130"
 	DEFB $82
 	DEFW L8D5C
-	DEFW $6757
+	DEFW TLSCR0+455
 ; Level 8 "VERY HARD"
 LE418	DEFB $05,$05,$0F
 	DEFM "8050"
@@ -5675,7 +5659,7 @@ LE418	DEFB $05,$05,$0F
 	DEFM "170"
 	DEFB $AA
 	DEFW L8279
-	DEFW $6763
+	DEFW TLSCR0+467
 ; Level 9 "EXTREMELY HARD"
 LE42C:	DEFB $02,$03,$0A
 	DEFM "7040"
@@ -5683,7 +5667,7 @@ LE42C:	DEFB $02,$03,$0A
 	DEFM "250"
 	DEFB $FA
 	DEFW L8608
-	DEFW $6787
+	DEFW TLSCR0+503
 
 ; Play next note in melody
 LE440:	LD IX,$E51C
@@ -6001,7 +5985,15 @@ INCLUDE "sabot1sp.asm"
 ; Font
 INCLUDE "sabot1ft.asm"
 
+; Rooms
+Sobot1RoomsBegin:
+INCLUDE "sabot1rm.asm"
+Sobot1RoomsEnd:
+Sobot1RoomsSize EQU Sobot1RoomsEnd - Sobot1RoomsBegin
+
 ;----------------------------------------------------------------------------
+
+	;org	$6590 ;TODO
 
 ; Tile screen 0 30x17 tiles, 510 bytes - background
 TLSCR0:	DEFS	510
@@ -6017,8 +6009,6 @@ TLSCR4:	DEFS	510
 TLSCR5:	DEFS	510
 
 ;----------------------------------------------------------------------------
-; Rooms
-INCLUDE "sabot1rm.asm"
 
 ; Front tiles, 124 tiles, 17 bytes each
 INCLUDE "sabot1t1.asm"
@@ -6028,5 +6018,6 @@ INCLUDE "sabot1t2.asm"
 INCLUDE "sabot1t3.asm"
 
 ;----------------------------------------------------------------------------
+Sobot1End:
 
 	.end
