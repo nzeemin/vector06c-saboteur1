@@ -79,8 +79,8 @@ ROOM:	DEFW	L84A8	; Current Room address
 L7186:	DEFW	LA0B5	; Ninja sprite address
 
 ; Current Guard data
-L71C3:	DEFW	$0101	; Current Guard position in tilemap
-L71C5:	DEFB	$11	; Current Guard X position
+GARDPOS:	DEFW	$0101	; Current Guard position in tilemap
+GARDX:	DEFB	$11	; Current Guard X position
 L71C6:	DEFB	$08	; Current Guard Y position
 
 L71C7:	DEFB	$0E,$00,$0E,$00
@@ -173,16 +173,7 @@ L733B:	DEFW	LD3DE	; Sprite Ninja/Guard walking 1
 	DEFW	LD45C	; Sprite Ninja/Guard walking 4
 
 ; Mirror table
-L723A:
-	DEFB	$01,$81,$41,$C1,$21,$A1,$61,$E1,$11,$91,$51,$D1,$31,$B1,$71,$F1	; Mirror table 1st part
-	DEFB	$09,$89,$49,$C9,$29,$A9,$69,$E9,$19,$99,$59,$D9,$39,$B9,$79,$F9
-	DEFB	$05,$85,$45,$C5,$25,$A5,$65,$E5,$15,$95,$55,$D5,$35,$B5,$75,$F5
-	DEFB	$0D,$8D,$4D,$CD,$2D,$AD,$6D,$ED,$1D,$9D,$5D,$DD,$3D,$BD,$7D,$FD
-	DEFB	$03,$83,$43,$C3,$23,$A3,$63,$E3,$13,$93,$53,$D3,$33,$B3,$73,$F3
-	DEFB	$0B,$8B,$4B,$CB,$2B,$AB,$6B,$EB,$1B,$9B,$5B,$DB,$3B,$BB,$7B,$FB
-	DEFB	$07,$87,$47,$C7,$27,$A7,$67,$E7,$17,$97,$57,$D7,$37,$B7,$77,$F7
-	DEFB	$0F,$8F,$4F,$CF,$2F,$AF,$6F,$EF,$1F,$9F,$5F,$DF,$3F,$BF,$7F,$FF
-L72BA:	DEFB	$00,$80,$40,$C0,$20,$A0,$60,$E0,$10,$90,$50,$D0,$30,$B0,$70,$F0	; Mirror table 2nd part
+MIRROR:	DEFB	$00,$80,$40,$C0,$20,$A0,$60,$E0,$10,$90,$50,$D0,$30,$B0,$70,$F0
 	DEFB	$08,$88,$48,$C8,$28,$A8,$68,$E8,$18,$98,$58,$D8,$38,$B8,$78,$F8
 	DEFB	$04,$84,$44,$C4,$24,$A4,$64,$E4,$14,$94,$54,$D4,$34,$B4,$74,$F4
 	DEFB	$0C,$8C,$4C,$CC,$2C,$AC,$6C,$EC,$1C,$9C,$5C,$DC,$3C,$BC,$7C,$FC
@@ -190,7 +181,15 @@ L72BA:	DEFB	$00,$80,$40,$C0,$20,$A0,$60,$E0,$10,$90,$50,$D0,$30,$B0,$70,$F0	; Mi
 	DEFB	$0A,$8A,$4A,$CA,$2A,$AA,$6A,$EA,$1A,$9A,$5A,$DA,$3A,$BA,$7A,$FA
 	DEFB	$06,$86,$46,$C6,$26,$A6,$66,$E6,$16,$96,$56,$D6,$36,$B6,$76,$F6
 	DEFB	$0E,$8E,$4E,$CE,$2E,$AE,$6E,$EE,$1E,$9E,$5E,$DE,$3E,$BE,$7E,$FE
-IF (L723A AND $FF) NE 0		; Make sure the Mirror table properly aligned
+	DEFB	$01,$81,$41,$C1,$21,$A1,$61,$E1,$11,$91,$51,$D1,$31,$B1,$71,$F1
+	DEFB	$09,$89,$49,$C9,$29,$A9,$69,$E9,$19,$99,$59,$D9,$39,$B9,$79,$F9
+	DEFB	$05,$85,$45,$C5,$25,$A5,$65,$E5,$15,$95,$55,$D5,$35,$B5,$75,$F5
+	DEFB	$0D,$8D,$4D,$CD,$2D,$AD,$6D,$ED,$1D,$9D,$5D,$DD,$3D,$BD,$7D,$FD
+	DEFB	$03,$83,$43,$C3,$23,$A3,$63,$E3,$13,$93,$53,$D3,$33,$B3,$73,$F3
+	DEFB	$0B,$8B,$4B,$CB,$2B,$AB,$6B,$EB,$1B,$9B,$5B,$DB,$3B,$BB,$7B,$FB
+	DEFB	$07,$87,$47,$C7,$27,$A7,$67,$E7,$17,$97,$57,$D7,$37,$B7,$77,$F7
+	DEFB	$0F,$8F,$4F,$CF,$2F,$AF,$6F,$EF,$1F,$9F,$5F,$DF,$3F,$BF,$7F,$FF
+IF (MIRROR AND $FF) NE 0		; Make sure the Mirror table properly aligned
 	.ERROR "Mirror table address should be aligned so lower byte is 0!"
 ENDIF
 
@@ -1507,7 +1506,7 @@ LA3D1:	LD A,(NJAY)	; get Ninja Y
 	CP (HL)		; compare Ninja Y to Guard Y
 	RET NZ
 	LD A,(LA3A6)
-	CP $00
+	or a
 	RET NZ
 	POP HL
 	LD A,$14
@@ -1521,7 +1520,7 @@ LA3EE:	LD A,(NJAY)	; get Ninja Y
 	LD HL,L71C6	; Guard Y position address
 	CP (HL)		; compare Ninja Y to Guard Y
 	RET NZ
-	LD HL,(L71C3)	; get Guard position in tilemap
+	LD HL,(GARDPOS)	; get Guard position in tilemap
 	LD DE,TLSCR0+2	; Tile screen 0 + 2
 	ADD HL,DE	; now HL in Back tile screen
 	LD A,$64
@@ -1576,15 +1575,15 @@ LA43B:	CP $0B
 	LD IX,LA747
 LA45D:	LD L,(IX+$04)
 LA460:	LD H,(IX+$05)
-	LD A,(L71C5)	; get Guard X
+	LD A,(GARDX)	; get Guard X
 	LD D,$00
 	LD E,A
 	ADD HL,DE
 	LD DE,$003C
-	LD A,(L71C5)	; get Guard X
+	LD A,(GARDX)	; get Guard X
 	INC A
 	PUSH HL
-	LD HL,(L71C3)	; get Current Guard position in tilemap
+	LD HL,(GARDPOS)	; get Current Guard position in tilemap
 	ADD HL,DE
 	EX DE,HL
 	POP HL
@@ -1657,24 +1656,25 @@ LA4D1:	DEC DE		; !!MUT-CMD!! "DEC DE" or "INC DE" instruction
 ; Guard state = $14 ?
 LA4E7:	CP $14
 	JP NZ,LA52F
+; Guard state = $14 = throwing a knife
 	LD (HL),$04	; set Guard state = $04
 	LD HL,LD486	; Sprite Ninja/Guard standing
 	LD (LA70E+1),HL	; set Guard sprite
-	LD HL,(L71C3)	; get Guard position in tilemap
+	LD HL,(GARDPOS)	; get Guard position in tilemap
 	LD DE,$003C	; 60
 	LD B,$00
 	LD C,$03
 	LD A,(GARDDIR)	; get Guard direction
-	CP $00		; left?
+	or a		; left?
 	JP Z,LA50B	; left =>
 	LD C,$05
 	LD B,$05
 	LD DE,$0041	; 65
 LA50B:	ADD HL,DE
-	LD (LA3A7),HL
-	LD A,(L71C5)	; get Guard X
+	LD (LA3A7),HL	; set 2nd object position
+	LD A,(GARDX)	; get Guard X
 	ADD A,B
-	LD IX,LA3A6
+	LD IX,LA3A6	; 2nd object address
 	LD (IX+$00),$CA
 	LD (IX+$03),C
 	LD (IX+$04),C
@@ -1687,6 +1687,7 @@ LA50B:	ADD HL,DE
 ; Guard state = $0A ?
 LA52F:	CP $0A
 	JP NZ,LA56D
+; Guard state = $0A - Standing
 	LD HL,LD486	; Sprite Ninja/Guard standing
 	LD (LA70E+1),HL	; set Guard sprite
 	LD HL,NJAY	; Ninja Y address
@@ -1699,7 +1700,7 @@ LA52F:	CP $0A
 	JP Z,LA565
 	LD A,(GARDDIR)	; get Guard direction: 0 / 1
 	DEC A		; $FF left / 0 right
-	LD A,(L71C5)	; get Guard X
+	LD A,(GARDX)	; get Guard X
 	LD HL,NJAX	; Ninja X address
 	JP Z,LA55F	; right =>
 	ADD A,$02	; for left, Guard X + 2
@@ -1729,7 +1730,7 @@ LA57A:	CP $08
 	POP HL
 	JP NZ,LA6FF	; => Draw Guard on tilemap
 	LD (HL),$03	; set Guard state = walking state 3
-	LD HL,(L71C3)
+	LD HL,(GARDPOS)
 	LD DE,TLSCR2+64	; Tile screen 2 + 64
 	LD A,(GARDDIR)	; get Guard direction
 	CP $01		; right?
@@ -1772,7 +1773,7 @@ LA5C7:	CP $06
 	LD (HL),$07	; set Guard state = $07: back to standing
 	LD HL,LD4B0	; Sprite Ninja/Guard jumping
 	LD (LA70E+1),HL	; set Guard sprite
-	LD HL,(L71C3)	; get Guard position in tilemap
+	LD HL,(GARDPOS)	; get Guard position in tilemap
 	LD DE,TLSCR2+65	; Tile screen 2 + 65
 	LD A,(GARDDIR)	; get Guard direction
 	CP $01		; right?
@@ -1800,7 +1801,7 @@ LA5FC:	CP $07
 
 ; Guard state is none of the above
 LA614:	LD HL,NJAX	; Ninja X address
-	LD A,(L71C5)	; get Guard X
+	LD A,(GARDX)	; get Guard X
 	SUB (HL)	; compare to Ninja X
 	JP NZ,LA635	; not equal =>
 	CALL LA418
@@ -1848,7 +1849,7 @@ LA65B:	LD A,B		; restore value "Guard X - Ninja X"
 	LD A,$03	; walking phase 3
 	LD (L7346),A	; set Guard state
 	JP LA6FF	; => Draw Guard on tilemap
-LA67F:	LD HL,L71C5	; Guard X address
+LA67F:	LD HL,GARDX	; Guard X address
 	DEC (HL)	; decrease Guard X - move one tile left
 	XOR A
 	LD (GARDDIR),A	; set Guard direction = left
@@ -1886,14 +1887,14 @@ LA6AF:	LD A,B
 	LD A,$03
 	LD (L7346),A	; set Guard state = walking phase 3
 	JP LA6FF	; => Draw Guard on tilemap
-LA6D2:	LD HL,L71C5	; Guard X address
+LA6D2:	LD HL,GARDX	; Guard X address
 	INC (HL)	; increase Guard X - move one tile right
 	LD A,$01
 	LD (GARDDIR),A	; set Guard direction = right
 	LD DE,$0001
-LA6DE:	LD HL,(L71C3)	; get Guard position in tilemap
+LA6DE:	LD HL,(GARDPOS)	; get Guard position in tilemap
 	ADD HL,DE
-	LD (L71C3),HL	; update Guard position in tilemap
+	LD (GARDPOS),HL	; update Guard position in tilemap
 	LD A,(L7346)	; get Guard state
 	INC A		; next walking phase
 	AND $03		; 0..3
@@ -1912,7 +1913,7 @@ LA6DE:	LD HL,(L71C3)	; get Guard position in tilemap
 	LD (DE),A
 
 ; Draw Guard on tilemap
-LA6FF:	LD DE,(L71C3)	; get Guard position in tilemap
+LA6FF:	LD DE,(GARDPOS)	; get Guard position in tilemap
 	LD A,(GARDDIR)	; get Guard direction
 	CP $00		; left?
 	JP NZ,LA728	; right =>
@@ -1960,7 +1961,7 @@ LA747:	DEFB $61,$45,$81,$45,$A1,$45,$C1,$45
 	DEFB $61,$4D,$81,$4D
 
 ; Set update flags for Guard, 6x7 tiles
-LA75B:	LD DE,(L71C3)	; get Current Guard position in tilemap
+LA75B:	LD DE,(GARDPOS)	; get Current Guard position in tilemap
 	LD HL,TLSCR1	; Tile screen 1 start address
 	ADD HL,DE	; now HL in update flags tilemap
 	LD DE,$0018	; 24
@@ -2770,10 +2771,15 @@ LB2CB:	ld a,e
 
 ; Mirror byte A
 MirrorByte:
-	LD IX,L72BA	; Mirror table half address
-	LD (LB2F9+2),A
-LB2F9:	LD A,(IX+$7E)
-	RET
+	push hl
+	ld h,HIGH(MIRROR)
+	ld l,a
+	ld a,(hl)
+	pop hl
+	;LD IX,L72BA	; Mirror table half address
+	;LD (LB2F9+2),A
+LB2F9:	;LD A,(IX+$7E)
+	ret
 
 ; Object procedure: flip trigger "D": set/remove wall in room 9739
 LB320:	LD A,(L9755+1)
@@ -2878,46 +2884,27 @@ LB39D:	LD A,(DE)
 LB3AF:	DEFS $01
 
 ; Routine at B3B0
-LB3B0:	LD HL,LC681
-	LD (L982B+2),HL
-	LD HL,LB673+1	; current dog data address
+LB3B0:	;LD HL,LC681
+	;LD (L982B+2),HL	; set Room 982B initialization, NO NEED
+	;LD HL,LB673+1	; current dog data address, NO NEED
 	LD (L9DD0+1),HL
 	LD HL,LC6A5
 	LD (L7C9C),HL
 	LD HL,LC671
 	LD (L947C+2),HL
 	LD (L93DF+2),HL
-	LD HL,LB422
-	LD (L7BD2+2),HL
-	LD HL,LC64C
-	LD (L791E+2),HL
-	LD HL,LB702
-	LD (L734A+1),HL
-	LD B,$00
-	LD D,$80
-	LD HL,L723A	; Mirror table address
-LB3E4:	LD C,$08
-	LD A,D
-LB3E7:	RR A
-	RL E
-	DEC C
-	JP NZ,LB3E7
-	LD (HL),E	; store reversed byte
-	INC HL
-	INC D
-	dec b
-	jp nz,LB3E4
-	EXX
-	PUSH HL
-	EXX
-	LD A,$01
-	;LD ($5C09),A	; set REPDEL = 1
-	;LD ($5C0A),A	; set REPPER = 1
+	;LD HL,LB422
+	;LD (L7BD2+2),HL	; NO NEED: the only assignment for this address
+	;LD HL,LC64C
+	;LD (L791E+2),HL	; NO NEED: the only assignment for this address
+	;LD HL,LB702
+	;LD (L734A+1),HL	; NO NEED: the only assignment for this address
+	;NOTE: Mirror table preparation was here
 	JP LB5C7
 
 ; Initialize a guard
 ; HL = Guard data address, see A1E1
-LB40A:	LD DE,L71C3	; address to store guard data
+LB40A:	LD DE,GARDPOS	; address to store guard data
 	LD (LB695+1),HL	; Save Guard data address
 	ld b,$04
 	call LDIR_B
@@ -3220,7 +3207,7 @@ LB673:	LD DE,$0000	; !!MUT-ARG!! current Dog data address
 LB68B:	LD A,(HL)	; get flag
 	LD (L71D4),A
 	LD (LB66D+1),HL
-	LD HL,L71C3
+	LD HL,GARDPOS
 LB695:	LD DE,$0000	; !!MUT-ARG!! current Guard data address
 	ld b,$04
 	call LDIR_B
@@ -4368,7 +4355,9 @@ LBFA5:	LD HL,LC339	; Movement handler: Ninja jumping
 
 ; Set movement handler = HL, set Ninja sprite = DE
 LBFB0:	LD (LB8CD+1),HL
-	LD (L7186),DE	; set Ninja sprite address = DE
+	ex de,hl
+	ld (L7186),hl	; set Ninja sprite address = DE
+	;ex de,hl
 	JP LB8D0	; => Update Ninja on tilemap
 
 ; Routine at BFBA
@@ -5365,8 +5354,6 @@ LDFA8:	;CP $53		; 'S' ?
 	;JP Z,LDFF1	; => Joystick selected
 	;CP $4B		; 'K' ?
 	;JP Z,LE004	; => Keyboard selected
-	;CP $52		; 'R' ?
-	;JP Z,LE097	; => Redefine Keys
 	;LD A,(INPUTM)	; get Input method
 	;CP $01		; Joystick?
 	;JP NZ,LDFCC
@@ -5453,138 +5440,6 @@ LE04D:	CALL LE440	; Play next note in melody
 	CP $00
 	RET Z
 	JP LE04D
-
-; Redefine keys messages
-LE05B:	DEFM "REDEFINE KEYS"
-LE068:	DEFM "PRESS THE KEYS"
-LE076:	DEFM "OF YOUR CHOICE"
-LE084:	DEFM "FIRE"
-LE088:	DEFM "UP"
-LE08A:	DEFM "DOWN"
-LE08E:	DEFM "LEFT"
-LE092:	DEFM "RIGHT"
-
-; Redefine Keys
-LE097:	CALL LDFE6	; Unhighlight Menu item
-	CALL LDEC1	; Clear strings on the screen
-	LD HL,LE05B	; Redefine keys messages
-	LD DE,$C02D
-	LD C,$0D
-	CALL PRSTR	; Print string "REDEFINE KEYS"
-	LD DE,$C06D
-	LD C,$0E
-	CALL PRSTR	; Print string "PRESS THE KEYS"
-	LD DE,$C08D
-	LD C,$0E
-	CALL PRSTR	; Print string "OF YOUR CHOICE"
-	LD DE,$C0CF
-	LD C,$04
-	CALL PRSTR	; Print string "FIRE"
-	LD DE,$C0EF
-	LD C,$02
-	CALL PRSTR	; Print string "UP"
-	LD DE,$C80F
-	LD C,$04
-	CALL PRSTR	; Print string "DOWN"
-	LD DE,$C82F
-	LD C,$04
-	CALL PRSTR	; Print string "LEFT"
-	LD DE,$C84F
-	LD C,$05
-	CALL PRSTR	; Print string "RIGHT"
-	CALL LE04D	; Clear key buffer playing melody
-	EXX
-	LD DE,$E8CD ;TODO
-	LD BC,L7223
-	EXX
-	LD DE,$C0D5 ;TODO
-	LD B,$05
-	LD IX,LE043
-LE0F4:	PUSH BC
-	LD A,$B1
-	LD B,$0A
-LE0F9:	EXX
-	LD (DE),A
-	INC DE
-	EXX
-	dec b
-	jp nz,LE0F9
-	PUSH DE
-LE100:	PUSH IX
-	CALL LDFD4	; Clear LASTK and do RST $38 once
-	CALL LE440	; Play next note in melody
-	POP IX
-	;LD A,($5C08)	; get LASTK
-	CP $5B		; '['
-	JP C,LE113
-	SUB $20
-LE113:	LD B,$25
-	LD (LE17C),A
-	LD HL,LE17D
-LE11B:	CP (HL)
-	JP Z,LE125
-	INC HL
-	INC HL
-	INC HL
-	dec b
-	jp nz,LE11B
-	JP LE100
-LE125:	LD B,$02
-LE127:	INC HL
-	LD A,(LDFDB+1)
-	CP $6C
-	LD A,(HL)
-	LD (IX+$00),A
-	JP NZ,LE137
-	EXX
-	LD (BC),A
-	INC BC
-	EXX
-LE137:	INC IX
-	dec b
-	jp nz,LE127
-	EXX
-	INC BC
-	EXX
-	POP DE
-	PUSH DE
-	LD C,$01
-	LD HL,LE17C
-	CALL PRSTR	; Print string
-	PUSH IX
-	CALL LE04D	; Clear key buffer playing melody
-	POP IX
-	POP DE
-	LD A,$0E
-	LD B,$0A
-LE154:	EXX
-	DEC DE
-	LD (DE),A
-	EXX
-	dec b
-	jp nz,LE154
-	EXX
-	PUSH HL
-	LD HL,$0020	; 32
-	ADD HL,DE
-	EX DE,HL
-	POP HL
-	EXX
-	LD HL,$0020	; 32
-	RR D
-	RR D
-	RR D
-	ADD HL,DE
-	EX DE,HL
-	RL D
-	RL D
-	RL D
-	POP BC
-	DEC B
-	JP NZ,LE0F4
-	JP LDF60	; => Main menu
-
-LE17C:	DEFM "M"
 
 ; Data block at E17D
 LE17D:	DEFB $30,$EF,$01
@@ -5700,12 +5555,16 @@ LE2CD:	;CALL LE440	; Play next note in melody
 	LD E,(HL)
 	INC HL
 	LD D,(HL)
-	LD (LAD57),DE	; set Indicator Time value
+	ex de,hl
+	ld (LAD57),hl	; set Indicator Time value
+	ex de,hl
 	INC HL
 	LD E,(HL)
 	INC HL
 	LD D,(HL)
-LE343:	LD (LB7CA+1),DE	; set Time value for BOMB
+LE343:	ex de,hl
+	ld (LB7CA+1),hl	; set Time value for BOMB
+	ex de,hl
 	INC HL
 	LD A,(HL)
 	LD (L97CF+1),A	; set flag for wall in room 97A6
@@ -5773,8 +5632,9 @@ LE477:	LD HL,LE49A
 	INC HL
 	LD D,(HL)
 	INC HL
-LE47E:	LD (LE477+1),HL
-	LD (LE440+2),DE
+LE47E:	ld (LE440+2),hl
+	ex de,hl
+	ld (LE477+1),hl
 	JP LE440
 LE487:	LD BC,$4E20
 LE48A:	DEC BC
@@ -5984,7 +5844,7 @@ LF9C5:	CALL LBBDF	; Read Input
 	CP $00
 	LD A,(INPUTB)	; get Input bits
 	JP Z,LF9D7
-	BIT 4,A
+	and $10 ;BIT 4,A
 	RET NZ
 	JP LF9C5
 LF9D7:	XOR A
