@@ -2737,3 +2737,11 @@ LA0AB:	DEFB $9C	; Back block 1x2
 	DEFB $9B
 LA0AD:	DEFB $93,$92,$00,$00	; Back block 4x2
 	DEFB $0D,$0D,$93,$92
+
+; Block 3x6 tiles for room 84A8
+LF98F:	DEFB $82,$83,$84	 ; Back block 3x6 - crane
+	DEFB $85,$86,$87
+	DEFB $85,$88,$89
+	DEFB $8A,$8B,$89
+	DEFB $82,$83,$84
+	DEFB $00,$8C,$00

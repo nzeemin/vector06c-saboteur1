@@ -75,25 +75,28 @@ L62B8: 	LD A,(DE)	; get picture byte
 
 ;----------------------------------------------------------------------------
 
+INPUTM:	DEFB	$00	; Input method: 1 = Joystick, 0 = Keyboard
+INPUTB:	DEFB	$00	; Input bits: 000FUDLR
+
 ROOM:	DEFW	L84A8	; Current Room address
-L7186:	DEFW	LA0B5	; Ninja sprite address
+NJASPR:	DEFW	LA0B5	; Ninja sprite address
 
 ; Current Guard data
 GARDPOS:	DEFW	$0101	; Current Guard position in tilemap
 GARDX:	DEFB	$11	; Current Guard X position
-L71C6:	DEFB	$08	; Current Guard Y position
+GARDY:	DEFB	$08	; Current Guard Y position
 
 L71C7:	DEFB	$0E,$00,$0E,$00
 
 ; Current Dog data, 9 bytes
-L71CB:	DEFW	$018E	; Dog position in tilemap
+DOGPOS:	DEFW	$018E	; Dog position in tilemap
 DOGDIR:	DEFB	$00	; Dog direction
-L71CE:	DEFB	$08	; Dog X position
+DOGX:	DEFB	$08	; Dog X position
 L71CF:	DEFB	$00	; Dog ??
 L71D0:	DEFB	$07	; Dog's left limit
 L71D1:	DEFB	$17	; Dog's right limit
 L71D2:	DEFB	$00	; Dog ??
-L71D3:	DEFB	$06	; Dog Y position
+DOGY:	DEFB	$06	; Dog Y position
 
 L71D4:	DEFB	$F3	; ??
 L71D5:	DEFB	$01	; ??
@@ -101,14 +104,6 @@ L71D6:	DEFB	$7A,$00,$00,$02,$00,$01,$16,$00,$FD	; Room 79C6 dog data
 L71DF:	DEFB	$9E,$00,$01,$08,$00,$01,$16,$01
 L71E7:	DEFB	$FE,$B8,$67,$B0,$6F,$0A,$D9,$67
 L71EF:	DEFB	$D1,$6F,$0D
-
-INPUTM:	DEFB	$00		; Input method: 1 = Joystick, 0 = Keyboard
-L7223:	DEFB	$EF,$01,$04	; Ports and bits for the current input method
-	DEFB	$EF,$08,$03
-	DEFB	$EF,$10,$02
-	DEFB	$F7,$10,$01
-	DEFB	$EF,$04,$00
-INPUTB:	DEFB	$00		; Input bits: 000FUDLR
 
 NJADIR:	DEFB	$00		; Byte mirror flag
 
@@ -171,6 +166,8 @@ L733B:	DEFW	LD3DE	; Sprite Ninja/Guard walking 1
 	DEFW	LD408	; Sprite Ninja/Guard walking 2
 	DEFW	LD432	; Sprite Ninja/Guard walking 3
 	DEFW	LD45C	; Sprite Ninja/Guard walking 4
+
+	DEFS 15 ;FILLER
 
 ; Mirror table
 MIRROR:	DEFB	$00,$80,$40,$C0,$20,$A0,$60,$E0,$10,$90,$50,$D0,$30,$B0,$70,$F0
@@ -974,7 +971,7 @@ L74B2:	LD A,C
 	dec b
 	jp nz,L74B2
 	LD A,(L749D)
-	RLC A
+	rlca
 	LD (L749D),A
 	RET NC
 	LD HL,NRJ	; Energy address
@@ -1030,7 +1027,7 @@ L755C:
 ;----------------------------------------------------------------------------
 
 ; Process a dog
-L9C44:	LD HL,L71D3	; dog Y position address
+L9C44:	LD HL,DOGY	; dog Y position address
 	LD A,(NJAY)	; get Ninja Y
 	SUB (HL)
 	CP $07
@@ -1045,17 +1042,17 @@ L9C5A:	DEC (HL)
 	CP (HL)
 	JP NZ,L9C80
 	LD A,(DOGDIR)	; get Dog direction
-	CP $00		; left?
+	or a		; left?
 	JP NZ,L9C71	; right =>
 	LD A,(NJAX)	; get Ninja X
 	INC A
-	LD HL,L71CE	; Dog X position address
+	LD HL,DOGX	; Dog X position address
 	CP (HL)
 	JP C,L9C80
 	JP L9C7B
 L9C71:	LD A,(NJAX)	; get Ninja X
 	INC A
-	LD HL,L71CE	; Dog X position address
+	LD HL,DOGX	; Dog X position address
 	CP (HL)
 	JP NC,L9C80
 L9C7B:	LD A,$01
@@ -1074,7 +1071,7 @@ L9C80:	LD A,(DOGDIR)	; !!MUT-ARG!! get Dog direction
 ; Part of Dog processing
 L9CA8:	CP $00
 	JP NZ,L9D8B
-	LD HL,(L71CB)	; get Dog position in tilemap
+	LD HL,(DOGPOS)	; get Dog position in tilemap
 	LD DE,TLSCR2+33	; Tile screen 2 + 33: for right direction
 	LD A,(DOGDIR)	; get Dog direction
 	CP $01		; right?
@@ -1086,14 +1083,14 @@ L9CBD:	ADD HL,DE	; now HL = Dog position in Ninja tile screen
 	LD B,$05
 	CALL NZ,NRJDEC	; not $FF => Dog bites, decrease Energy by 5
 	LD A,(DOGDIR)	; get Dog direction
-	CP $00		; left?
+	or a		; left?
 	JP Z,L9CF1	; left =>
 
 ; Dog runs right
-L9CCC:	LD HL,(L71CB)	; get Dog position in tilemap
+L9CCC:	LD HL,(DOGPOS)	; get Dog position in tilemap
 	INC HL		; one tile right
-	LD (L71CB),HL	; update Dog position in tilemap
-	LD HL,L71CE	; Dog X position address
+	LD (DOGPOS),HL	; update Dog position in tilemap
+	LD HL,DOGX	; Dog X position address
 	INC (HL)	; one tile right
 	LD A,(L7344)
 	CP $01
@@ -1109,10 +1106,10 @@ L9CE4:	XOR A
 	JP L9D14
 
 ; Dog runs left
-L9CF1:	LD HL,(L71CB)	; get Dog position in tilemap
+L9CF1:	LD HL,(DOGPOS)	; get Dog position in tilemap
 	DEC HL		; one tile left
-	LD (L71CB),HL	; update Dog position in tilemap
-	LD HL,L71CE	; Dog X position address
+	LD (DOGPOS),HL	; update Dog position in tilemap
+	LD HL,DOGX	; Dog X position address
 	DEC (HL)	; one tile left
 	LD A,(L7344)
 	CP $01
@@ -1144,13 +1141,13 @@ L9D1F:	LD A,(HL)
 L9D31:	LD (L9D3B+1),HL	; set Dog sprite = HL
 
 ; Draw Dog in tilemap
-L9D34:	LD HL,(L71CB)
+L9D34:	LD HL,(DOGPOS)
 	LD DE,TLSCR3	; Tile screen 3 start address
 	ADD HL,DE
 L9D3B:	LD DE,L71FE	; !!MUT-ARG!! current Dog sprite address
 	LD B,$03	; 3 rows
 	LD A,(DOGDIR)	; get Dog direction
-	CP $00		; left?
+	or a		; left?
 	JP Z,L9D75	; left => draw Dog facing left
 
 ; Draw Dog facing right in tilemap
@@ -1172,7 +1169,7 @@ L9D58:	CALL L9D5C	;Set update flags for Dog, 4x3 tiles
 
 ; Set update flags for Dog, 4x3 tiles
 L9D5C:	LD C,$03	; 3 rows
-	LD HL,(L71CB)
+	LD HL,(DOGPOS)
 	LD DE,TLSCR1	; Tile screen 1 start address
 	ADD HL,DE
 	LD A,$01	; "need to update" flag
@@ -1213,7 +1210,7 @@ L9D8B:	LD HL,L7216	; Sprite Dog 4
 	CP $00
 	JP Z,L9DB3
 	LD A,(DOGDIR)	; get Dog direction
-	CP $00		; left?
+	or a		; left?
 	JP Z,L9DA6	; left =>
 	DEC A
 	LD (L71CF),A
@@ -1224,7 +1221,7 @@ L9DA6:	INC A
 	LD (L9C80+1),HL
 	JP L9D34
 L9DB3:	LD A,(DOGDIR)	; get Dog direction
-	CP $00		; left?
+	or a		; left?
 	JP Z,L9DC7	; left =>
 	DEC A
 	LD (L71D4),A
@@ -1236,7 +1233,7 @@ L9DC7:	LD (L71CF),A
 
 ; Initialize a dog
 ; HL = dog data address
-L9DCD:	LD DE,L71CB	; current dog data address
+L9DCD:	LD DE,DOGPOS	; current dog data address
 L9DD0:	LD (LB673+1),HL	; save current Dog data address
 	ld b,$09	; 9 = size of Dog data
 	call LDIR_B	; Copy Dog data
@@ -1488,7 +1485,7 @@ LA38E:	LD HL,LA2C1	; Dog data address
 
 ; Ninja and Guard in 12 tiles by X
 LA3B5:	LD A,(NJAY)	; get Ninja Y
-	LD HL,L71C6	; Guard Y position address
+	LD HL,GARDY	; Guard Y position address
 	CP (HL)		; compare Ninja Y to Guard Y
 	RET NZ
 	POP HL
@@ -1502,7 +1499,7 @@ LA3BE:	LD A,$14	; !!MUT-ARG!! ??
 
 ; Ninja and Guard in 9 tiles by X
 LA3D1:	LD A,(NJAY)	; get Ninja Y
-	LD HL,L71C6	; Guard Y position address
+	LD HL,GARDY	; Guard Y position address
 	CP (HL)		; compare Ninja Y to Guard Y
 	RET NZ
 	LD A,(LA3A6)
@@ -1517,7 +1514,7 @@ LA3D1:	LD A,(NJAY)	; get Ninja Y
 
 ; Ninja and Guard in 3 tiles by X
 LA3EE:	LD A,(NJAY)	; get Ninja Y
-	LD HL,L71C6	; Guard Y position address
+	LD HL,GARDY	; Guard Y position address
 	CP (HL)		; compare Ninja Y to Guard Y
 	RET NZ
 	LD HL,(GARDPOS)	; get Guard position in tilemap
@@ -1540,7 +1537,7 @@ LA3EE:	LD A,(NJAY)	; get Ninja Y
 
 ; Ninja and Guard are very close by X
 LA418:	LD A,(NJAY)	; get Ninja Y
-	LD HL,L71C6	; Guard Y position address
+	LD HL,GARDY	; Guard Y position address
 	CP (HL)		; compare Ninja Y to Guard Y
 	RET NZ
 	POP HL
@@ -1556,10 +1553,10 @@ LA418:	LD A,(NJAY)	; get Ninja Y
 LA434:	CALL LA75B	; Set update flags for Guard, 6x7 tiles
 	LD HL,L7346	; Guard state address
 	LD A,(HL)	; get Guard state
-
 ; Guard state = $0B ?
-LA43B:	CP $0B
+	CP $0B
 	JP NZ,LA4E7
+; Guard state = $0B = auto-gun
 	LD HL,LA3B4	; Guard counter address
 	DEC (HL)	; decrease Guard counter
 	LD A,(HL)	; get Guard counter
@@ -1567,7 +1564,7 @@ LA43B:	CP $0B
 	JP NC,LA6FF	; => Draw Guard on tilemap
 	LD A,$10
 	;OUT ($FE),A
-	LD A,(L71C6)	; get Guard Y
+	LD A,(GARDY)	; get Guard Y
 	ADD A,A		; Guard Y * 2
 	LD (LA45D+2),A
 	INC A		; Guard Y * 2 + 1
@@ -1593,7 +1590,7 @@ LA460:	LD H,(IX+$05)
 	LD A,$1B	; "DEC DE" instruction
 	LD (LA4D1),A	; set the instruction
 	LD A,(GARDDIR)	; get Guard direction
-	CP $00		; left?
+	or a		; left?
 	JP Z,LA4A2	; yes =>
 	LD A,$1A	; 26
 	SUB B
@@ -1647,7 +1644,7 @@ LA4D1:	DEC DE		; !!MUT-CMD!! "DEC DE" or "INC DE" instruction
 	XOR A
 	;OUT ($FE),A
 	LD A,(LA3B4)	; get Guard counter
-	CP $00
+	or a
 	JP NZ,LA6FF	; => Draw Guard on tilemap
 	LD A,$04
 	LD (L7346),A	; set Guard state = $04
@@ -1679,7 +1676,7 @@ LA50B:	ADD HL,DE
 	LD (IX+$03),C
 	LD (IX+$04),C
 	LD (IX+$06),A
-	LD A,(L71C6)	; get Guard Y
+	LD A,(GARDY)	; get Guard Y
 	ADD A,$02	; Guard Y + 2
 	LD (IX+$05),A
 	JP LA6FF	; => Draw Guard on tilemap
@@ -1691,7 +1688,7 @@ LA52F:	CP $0A
 	LD HL,LD486	; Sprite Ninja/Guard standing
 	LD (LA70E+1),HL	; set Guard sprite
 	LD HL,NJAY	; Ninja Y address
-	LD A,(L71C6)	; get Guard Y
+	LD A,(GARDY)	; get Guard Y
 	ADD A,$03	; Guard Y + 3
 	CP (HL)		; compare with Ninja Y
 	JP C,LA6FF	; Guard above Ninja => Draw Guard on tilemap
@@ -1821,7 +1818,7 @@ LA635:	JP C,LA68C	; Guard X < Ninja X =>
 ; Ninja X < Guard X
 LA637:	LD B,A		; save value "Guard X - Ninja X"
 	LD A,(GARDDIR)	; get Guard direction
-	CP $00		; left?
+	or a		; left?
 	JP Z,LA65B	; left =>
 	LD A,(L7346)	; get Guard state
 	CP $04		; Guard state = $04 ?
@@ -1913,9 +1910,10 @@ LA6DE:	LD HL,(GARDPOS)	; get Guard position in tilemap
 	LD (DE),A
 
 ; Draw Guard on tilemap
-LA6FF:	LD DE,(GARDPOS)	; get Guard position in tilemap
+LA6FF:	ld hl,(GARDPOS)	; get Guard position in tilemap
+	ex de,hl
 	LD A,(GARDDIR)	; get Guard direction
-	CP $00		; left?
+	or a		; left?
 	JP NZ,LA728	; right =>
 	LD HL,TLSCR4+5	; Tile screen 4 start address + 5
 	ADD HL,DE
@@ -1938,7 +1936,9 @@ LA715:	LD A,(DE)
 	RET
 LA728:	LD HL,TLSCR4	; Tile screen 4 start address
 	ADD HL,DE
-	LD DE,(LA70E+1)	; get Guard sprite address
+	ex de,hl
+	ld hl,(LA70E+1)	; get Guard sprite address
+	ex de,hl
 	LD B,$07	; 7 rows
 LA732:	LD C,$06	; 6 rows
 LA734:	LD A,(DE)	; get tile
@@ -1961,7 +1961,8 @@ LA747:	DEFB $61,$45,$81,$45,$A1,$45,$C1,$45
 	DEFB $61,$4D,$81,$4D
 
 ; Set update flags for Guard, 6x7 tiles
-LA75B:	LD DE,(GARDPOS)	; get Current Guard position in tilemap
+LA75B:	ld hl,(GARDPOS)	; get Current Guard position in tilemap
+	ex de,hl
 	LD HL,TLSCR1	; Tile screen 1 start address
 	ADD HL,DE	; now HL in update flags tilemap
 	LD DE,$0018	; 24
@@ -2218,7 +2219,7 @@ LAEE2:	LD A,(HL)
 LAEF0:	LD HL,$E800	; attributes screen address
 	LD C,$10
 LAEF5:	LD B,$0C
-LAEF7:	LD (HL),$08
+LAEF7:	;LD (HL),$08	; set attribute
 	INC HL
 	dec b
 	jp nz,LAEF7
@@ -2776,9 +2777,6 @@ MirrorByte:
 	ld l,a
 	ld a,(hl)
 	pop hl
-	;LD IX,L72BA	; Mirror table half address
-	;LD (LB2F9+2),A
-LB2F9:	;LD A,(IX+$7E)
 	ret
 
 ; Object procedure: flip trigger "D": set/remove wall in room 9739
@@ -2983,11 +2981,11 @@ LB48D:	LD HL,TLSCR5+47	; !!MUT-ARG!! Turret address on Tile Screen 5
 	LD DE,-TLSCR5
 	ADD HL,DE
 	SUB $26
-	LD IX,LA3AD
-	LD (IX+$03),A
-	LD (IX+$04),A
+	ld (LA3AD+3),a
+	ld (LA3AD+4),a
 	LD (LA3AE),HL
-	LD (IX+$00),$DA
+	ld a,$DA
+	LD (LA3AD),a
 	LD DE,$FFE2	; -30
 	LD B,$00
 LB4B0:	XOR A
@@ -2996,11 +2994,13 @@ LB4B0:	XOR A
 LB4B4:	ADD HL,DE
 	INC B
 	JP LB4B0
-LB4B8:	LD A,$1E
+LB4B8:	LD A,$1E	; 30
 	CP L
 	JP C,LB4B4
-	LD (IX+$06),L
-	LD (IX+$05),B
+	ld a,l
+	LD (LA3AD+6),a	; Turret X
+	ld a,b
+	LD (LA3AD+5),a	; Turret Y
 LB4C3:	LD A,$32	; !!MUT-ARG!! ??
 	POP HL
 LB4C6:	LD (LB4DD),A	; update Turret counter
@@ -3038,14 +3038,16 @@ LB4ED:	dec b
 LB4FA:	LD B,$06
 	LD HL,LD600+187
 LB4FF:	LD A,(HL)
-	RR A
-	RR (HL)
+	rra
+	ld a,(hl)
+	rra
+	ld (hl),a
 	INC HL
 	dec b
 	jp nz,LB4FF
 	LD HL,TLSCR1+360
-	LD B,$1E
-	LD A,$01
+	LD B,30
+	LD A,$01	; "need update" mark
 LB50E:	LD (HL),A
 	INC HL
 	dec b
@@ -3181,7 +3183,7 @@ LB5F5:	LD (HL),A
 	LD HL,LB532	; movement handler for initial room
 	LD (LB8CD+1),HL	; set movement handler address
 	LD HL,LD558	; Sprite Ninja sitting
-	LD (L7186),HL	; set Ninja sprite address
+	LD (NJASPR),HL	; set Ninja sprite address
 	LD A,$01
 	LD (NJAX),A	; set Ninja X = 1
 	LD A,$05
@@ -3194,7 +3196,7 @@ LB5F5:	LD (HL),A
 ; Current Room changed, entering the new Room
 LB66A:	LD A,(L71D4)
 LB66D:	LD ($0000),A	; !!MUT-ARG!! address for current Dog flag
-	LD HL,L71CB
+	LD HL,DOGPOS
 LB673:	LD DE,$0000	; !!MUT-ARG!! current Dog data address
 	ld b,$09
 	call LDIR_B
@@ -3413,7 +3415,8 @@ LB814:	LD A,(DE)	; get byte +$00
 	LD H,A
 	INC DE
 	PUSH DE		; save address in the table
-	LD DE,(NJAPOS)
+	ex de,hl
+	ld hl,(NJAPOS)
 	ADD HL,DE	; add Ninja position in tilemap
 	POP DE		; restore address in the table
 	LD A,(DE)	; get byte +$02
@@ -3425,7 +3428,9 @@ LB814:	LD A,(DE)	; get byte +$00
 	LD B,$03
 	LD HL,LB84C	; address to store Object tile and Object procedure address
 	INC DE
-	LD (LB84A),DE	; store Object address + 4
+	ex de,hl
+	ld (LB84A),hl	; store Object address + 4
+	ex de,hl
 LB833:	LD A,(DE)	; get byte +$04/$05/$06
 	LD (HL),A
 	INC HL
@@ -3444,17 +3449,21 @@ LB83C:	LD A,(L749D)	; get Energy lower
 	RET
 
 ; Set initial data in Table of Objects
-LB851:	LD B,$23	; 35 objects
-	LD DE,$0007	; 7 = size of record in Table of Objects
-	LD IX,LD256+3	; = D256 (address for Table of Objects) + 3
+LB851:	LD B,35		; 35 objects
+	ld de,LD256+3	; = (address for Table of Objects) + 3
 	LD HL,LD210	; address for table with initial data
 LB85D:	LD A,(HL)
-	LD (IX+$00),A	; set byte +$03 in the record
+	ld (de),a	; set byte +$03 in the record
 	INC HL
+	inc de
 	LD A,(HL)
-	LD (IX+$01),A	; set byte +$04 in the record
+	ld (de),A	; set byte +$04 in the record
 	INC HL
-	ADD IX,DE	; next record
+	push hl
+	ld hl,$0006	; shift to next record (size of record = 7)
+	add hl,de	; next record
+	ex de,hl
+	pop hl
 	dec b
 	jp nz,LB85D	; continue the loop
 	RET
@@ -3502,7 +3511,9 @@ LB8E0:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	JP NZ,LB907
 	LD DE,TLSCR2+5
 	ADD HL,DE
-	LD DE,(L7186)	; get Ninja sprite address
+	ex de,hl
+	ld hl,(NJASPR)	; get Ninja sprite address
+	ex de,hl
 	LD B,$07
 LB8F4:	LD C,$06
 LB8F6:	LD A,(DE)
@@ -3520,7 +3531,9 @@ LB8F6:	LD A,(DE)
 	JP LB922
 LB907:	LD DE,TLSCR2	; Tile screen 2 start address
 	ADD HL,DE
-	LD DE,(L7186)	; get Ninja sprite address
+	ex de,hl
+	ld hl,(NJASPR)	; get Ninja sprite address
+	ex de,hl
 	LD B,$07
 LB911:	LD C,$06
 LB913:	LD A,(DE)
@@ -3936,6 +3949,19 @@ ReadInput_map:                        ; 7   6   5   4   3   2   1   0
   DW JoystickP
   DB $10,$10,$00,$00,$04,$08,$02,$01  ; Fr  Fr  --  --  Dn  Up  Lt  Rt
 
+; Clear the whole screen
+ClearScreen:
+	ld hl,$A000
+	ld bc,$6000
+	xor a
+_10:	ld (hl),a
+	inc hl
+	dec c
+	jp nz,_10
+	dec b
+	jp nz,_10
+	ret
+
 ; Routine at BC0D
 ; Prepare screen background for title picture
 LBC0D:	LD SP,$A000	; !!MUT-ARG!!
@@ -3945,16 +3971,9 @@ LBC0D:	LD SP,$A000	; !!MUT-ARG!!
 ; Entry point
 LBC13:	;LD HL,LE5DC	; Melody start address
 	;LD (LE440+2),HL	; set melody current address
-; clear screen
-	ld hl,$A000
-	ld bc,$6000
-	xor a
-_10:	ld (hl),a
-	inc hl
-	dec c
-	jp nz, _10
-	dec b
-	jp nz, _10
+;
+	call ClearScreen
+;
 	;LD C,$00
 LBC28:	;PUSH HL
 	;LD B,$04
@@ -4070,7 +4089,7 @@ LBCF7:	LD A,(LB850)	; get HELD tile
 	LD DE,(LB84A)	; get Object address + 4
 	LD (DE),A	; set Object tile
 	DEC DE
-	CP $00		; held nothing?
+	or a		; held nothing?
 	JP Z,LBD08	; nothing =>
 	SUB $C6
 	SRL A
@@ -4102,7 +4121,7 @@ LBD37:	LD HL,LA39F
 	CP (HL)
 	JP NZ,LBDB2
 	LD A,(LB850)	; get HELD tile
-	CP $00		; nothing?
+	or a		; nothing?
 	JP Z,LBDB2
 	CP $D4
 	JP Z,LBDB2
@@ -4343,10 +4362,10 @@ LBF7B:	LD HL,TLSCR0+2	; Tile screen 0 + 2
 	or a		; left?
 	LD A,(INPUTB)	; get Input bits
 	JP Z,LBFA0
-	BIT 0,A		; check RIGHT bit
+	and $01		; BIT 0,A	; check RIGHT bit
 	CALL NZ,LC4E8
 	JP LBFA5
-LBFA0:	BIT 1,A		; check LEFT bit
+LBFA0:	and $02		; BIT 1,A	; check LEFT bit
 	CALL NZ,LC4E8
 LBFA5:	LD HL,LC339	; Movement handler: Ninja jumping
 	LD A,$02
@@ -4356,7 +4375,7 @@ LBFA5:	LD HL,LC339	; Movement handler: Ninja jumping
 ; Set movement handler = HL, set Ninja sprite = DE
 LBFB0:	LD (LB8CD+1),HL
 	ex de,hl
-	ld (L7186),hl	; set Ninja sprite address = DE
+	ld (NJASPR),hl	; set Ninja sprite address = DE
 	;ex de,hl
 	JP LB8D0	; => Update Ninja on tilemap
 
@@ -4381,14 +4400,9 @@ LBFD5:	LD B,$0A
 	JP NZ,LC04A
 	LD B,$32
 	CALL LB4DE	; Increase PAY value by 5000
-	LD HL,$C000	; Screen start address
-	LD DE,$C001
-	LD BC,$1800
-	LD (HL),$00
-	LDIR		; Clear whole screen
-	;LD BC,$02FF
-	;LD (HL),$0F
-	;LDIR		; Clear all attributes
+;
+	call ClearScreen
+;
 	LD HL,LC062	; Messages address
 	LD DE,$C089	; Screen address
 	LD C,$0E
@@ -4486,7 +4500,7 @@ LC0AB:	PUSH HL
 LC12E:	LD HL,LC3D9	; Movement handler for Ninja on ladder
 	LD (LB8CD+1),HL
 	LD HL,LD52E	; Sprite Ninja on ladder
-	LD (L7186),HL	; set Ninja sprite address
+	LD (NJASPR),HL	; set Ninja sprite address
 	JP LC498	; => Move down one tile
 
 ; Routine at C13D
@@ -4514,7 +4528,7 @@ LC154:	BIT 0,A
 LC162:	LD HL,LC1B6	; Movement handler address
 	LD (LB8CD+1),HL
 	LD HL,LD3DE	; Sprite Ninja/Guard walking 1
-	LD (L7186),HL	; set Ninja sprite address
+	LD (NJASPR),HL	; set Ninja sprite address
 ; Entry point
 LC16E:	JP LB8D0	; => Update Ninja on tilemap
 
@@ -4551,7 +4565,7 @@ LC1DA:	LD DE,$FFE3	; -29
 	CP (HL)
 	JP NC,LC1EE
 	CALL LBBDF	; Read Input
-	BIT 0,A		; check RIGHT bit
+	and $01		; BIT 0,A	; check RIGHT bit
 	JP Z,LC226	; => Ninja standing
 	JP LB8D0	; => Update Ninja on tilemap
 LC1EE:	LD DE,$003B	; +59
@@ -4588,7 +4602,7 @@ LC226:	LD HL,LBC55	; Movement handler: Ninja standing
 
 ; Movement handler (B8CE handler): Ninja sitting
 LC22F:	CALL LBBDF	; Read Input
-	BIT 2,A		; check DOWN bit
+	and $04		; BIT 2,A	; check DOWN bit
 	JP NZ,LC239	; still pressed =>
 	JP LC226	; DOWN key released => stand up
 LC239:	LD HL,(NJAPOS)	; get Ninja position in tilemap
@@ -4602,7 +4616,7 @@ LC239:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 
 ; Movement handler: Ninja walking
 LC24B:	LD A,(NJAX)	; get Ninja X
-	CP $00		; at very left?
+	or a		; at very left?
 	JP Z,LC319	; => Going to room at Left
 	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,TLSCR0+181	; Tile screen 0 + 181
@@ -4623,7 +4637,7 @@ LC26F:	LD DE,$FFE1	; -31
 	CP (HL)
 	JP NC,LC283
 	CALL LBBDF	; Read Input
-	BIT 1,A		; check LEFT bit
+	and $02		; BIT 1,A	; check LEFT bit
 	JP Z,LC226	; => Ninja standing
 	JP LB8D0	; => Update Ninja on tilemap
 LC283:	LD DE,$003D	; +61
@@ -4680,7 +4694,7 @@ LC2E2:	;OUT (C),D
 LC2E8:	LD H,$00
 	LD DE,L733B	; Table of four Ninja/Guard walking sprites
 	ADD HL,DE
-	LD DE,L7186	; address for Ninja sprite address
+	LD DE,NJASPR	; address for Ninja sprite address
 	LD A,(HL)
 	LD (DE),A
 	INC HL
@@ -4860,7 +4874,7 @@ LC412:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 
 ; Check if UP pressed
 LC42C:	LD A,(INPUTB)	; get Input bits
-	BIT 3,A		; check UP bit
+	and $08		; BIT 3,A	; check UP bit
 	JP Z,LC477
 
 ; Pressed UP
@@ -4875,7 +4889,7 @@ LC433:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	JP Z,LC447
 	JP LC495	; => Update Ninja on tilemap
 LC447:	LD A,(NJAY)	; get Ninja Y
-	CP $00		; top row?
+	or a		; top row?
 	JP Z,LC623	; yes => Going to room Up from current
 	LD DE,$FF2E	; -210 = 7 rows higher
 	ADD HL,DE
@@ -4899,8 +4913,9 @@ LC467:	ADD HL,DE
 	JP LB8D0	; => Update Ninja on tilemap
 
 ; Check if DOWN pressed
-LC477:	BIT 2,A		; check DOWN bit
-	JP Z,LC495	; => Update Ninja on tilemap
+LC477:	ld a,(INPUTB)	; get Input bits
+	and $04		; BIT 2,A	; check DOWN bit
+	JP Z,LB8D0	; => Update Ninja on tilemap
 
 ; Pressed DOWN
 LC47B:	LD A,(NJAY)	; get Ninja Y
@@ -4983,7 +4998,7 @@ LC50D:	LD A,(NJADIR)	; get Ninja direction
 	LD HL,NJAX	; Ninja X address
 	LD A,(HL)
 	JP NZ,LC56C
-	CP $00
+	or a
 	JP Z,LC319	; => Going to room at Left
 	DEC (HL)
 	LD HL,(NJAPOS)	; get Ninja position in tilemap
@@ -5217,7 +5232,7 @@ LC6CD:	LD A,B
 	LD (NJAX),A	; set Ninja X
 	LD (NJAPOS),DE	; set Ninja position in tilemap
 	LD DE,LD486	; Sprite Ninja/Guard standing
-	LD (L7186),DE	; set Ninja sprite
+	LD (NJASPR),DE	; set Ninja sprite
 	LD (LB8CD+1),HL	; set Movement handler
 	JP LB937	; => Standard room procedure
 
@@ -5804,14 +5819,6 @@ LF97D:	LD A,(DE)
 	DEC C
 	JP NZ,LF97B
 	JP LB422
-
-; Block 3x6 tiles for room 84A8
-LF98F:	DEFB $82,$83,$84	 ; Back block 3x6 - crane
-	DEFB $85,$86,$87
-	DEFB $85,$88,$89
-	DEFB $8A,$8B,$89
-	DEFB $82,$83,$84
-	DEFB $00,$8C,$00
 
 ; Sound ??
 LF9A1:	RL B
