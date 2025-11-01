@@ -2493,6 +2493,8 @@ L71BB:	DEFB	$1F,$20			; Front block 2x4 - console
 	DEFB	$23,$24
 	DEFB	$25,$26
 
+L7348:	DEFB	$05,$08
+
 ; Blocks for rooms
 L7984:	DEFB	$F1,$F0		; Back block 2x5 - ladder black on blue
 	DEFB	$07,$0A
