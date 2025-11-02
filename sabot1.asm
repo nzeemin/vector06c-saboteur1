@@ -34,9 +34,9 @@ DOGPOS:	DEFW $018E	; Dog position in tilemap
 DOGDIR:	DEFB $00	; Dog direction
 DOGX:	DEFB $08	; Dog X position
 DOGST:	DEFB $00	; Dog state: 0 = run, 1 = changing direction, >= $42 is dead
-L71D0:	DEFB $07	; Dog's left limit
-L71D1:	DEFB $17	; Dog's right limit
-L71D2:	DEFB $00	; Dog changing direction: 0 = right to left, 1 = left to right
+DOGLTL:	DEFB $07	; Dog's left limit
+DOGRTL:	DEFB $17	; Dog's right limit
+DOGDIX:	DEFB $00	; Dog changing direction: 0 = right to left, 1 = left to right
 DOGY:	DEFB $06	; Dog Y position
 
 L71D4:	DEFB $F3	; ??
@@ -76,7 +76,8 @@ LA3A7:	DEFB $45,$01,$05,$05
 LA3AB:	DEFB $0A,$19
 ; 3rd object - Turett
 LA3AD:	DEFB $00
-LA3AE:	DEFB $69,$00,$06,$06,$03
+LA3AE:	DEFB $69,$00,$06,$06
+LA382:	DEFB $03	; Turret Y
 LA3B3:	DEFB $0F	; Turret X
 
 LA3B4:	DEFB $01	; ?? Guard counter
@@ -85,9 +86,9 @@ LB2FD:	DEFB $C3	; Counter for Ninja/Guard head tile change
 
 LB4DD:	DEFB $32	; Turret counter 50..0
 
-LB5C4:	DEFB $15	; Time fast counter 50..0
+TIMECN:	DEFB $15	; Time fast counter 50..0
 LB5C5:	DEFB $01	; Ninja standing counter
-LB5C6:	DEFB $00	; Time mode: $00 = time ticking; $01 = Time stopped; $02 = BOMB ticking mode
+TIMODE:	DEFB $00	; Time mode: $00 = time ticking; $01 = Time stopped; $02 = BOMB ticking mode
 
 LB84A:	DEFW LD2F7+4	; Object address + 4, in table LD256
 LB84C:	DEFB $00	; Object tile
@@ -624,7 +625,8 @@ LBF67:	DEFM "  MISSION FAILURE   "
 LC062:	DEFM "DISK RETRIEVED"
 LC070:	DEFM "DISK "
 LC075:	DEFM "BONUS: $05000"
-LC082:	DEFM "LEVEL"
+LC082:	DEFM "LEVEL "
+LEVED:	DEFM "1"	; Current Level digit
 LC087:	DEFM "TOTAL PAY : $"
 
 ; String 18 spaces
@@ -632,11 +634,8 @@ LDEE6:	DEFM "                  "
 
 ; Menu messages
 TITLE:	DEFM "SABOTEUR VECTOR-06C"
-LDEF8:	DEFM "J  KEMPSTON"
-LDF03:	DEFM "K  KEYBOARD"
-LDF27:	DEFM "S  START MISSION"
+LDF27:	DEFM "START MISSION"
 
-LE1EC:	DEFM "1"	; Current Level digit
 LE1ED:	DEFM "ENTER SKILL LEVEL"
 LE1FE:	DEFM "1 TO 9"
 LE204:	DEFM "YOUR MISSION"
@@ -1112,12 +1111,12 @@ L9CCC:	LD HL,(DOGPOS)	; get Dog position in tilemap
 	LD A,(DOGNOL)
 	CP $01
 	JP Z,L9CE4
-	LD A,(L71D1)	; get Dog's right limit
+	LD A,(DOGRTL)	; get Dog's right limit
 	CP (HL)
 	JP NZ,L9D14
 L9CE4:	XOR A
 	LD (DOGNOL),A
-	LD (L71D2),A
+	LD (DOGDIX),A
 	INC A
 	LD (DOGST),A	; ?? = 1
 	JP L9D14
@@ -1131,13 +1130,13 @@ L9CF1:	LD HL,(DOGPOS)	; get Dog position in tilemap
 	LD A,(DOGNOL)
 	CP $01
 	JP Z,L9D09
-	LD A,(L71D0)	; get Dog's left limit
+	LD A,(DOGLTL)	; get Dog's left limit
 	CP (HL)
 	JP NZ,L9D14
 L9D09:	XOR A
 	LD (DOGNOL),A
 	INC A
-	LD (L71D2),A
+	LD (DOGDIX),A
 	LD (DOGST),A	; ?? = 1
 L9D14:	LD HL,L71D5
 	INC (HL)
@@ -1223,7 +1222,7 @@ L9D7A:	LD A,(DE)
 ; ?? something about Dog
 L9D8B:	LD HL,L7216	; Sprite Dog 4
 	LD (L9D3B+1),HL
-	LD A,(L71D2)
+	LD A,(DOGDIX)
 	CP $00
 	JP Z,L9DB3
 	LD A,(DOGDIR)	; get Dog direction
@@ -2946,8 +2945,8 @@ LB5C7:	CALL LAC44	; Reset Guard data and Dog data
 	;LD (LBC0D+1),SP
 	LD HL,LB7CA+1
 	LD (LE343+2),HL
-	LD HL,LBC3B
-	LD (LDFD1+1),HL
+	;LD HL,LBC3B
+	;LD (LDFD1+1),HL	; NO NEED
 	LD A,$C5	; command = $C5 PUSH BC
 	LD (NRJDEC),A	; set command = PUSH BC = enable Energy decrease
 	LD HL,LBEAA
@@ -2965,7 +2964,7 @@ LB5F5:	LD (HL),A
 	CALL LACCA	; Draw game screen frames and indicator text
 	XOR A
 	;LD ($5C48),A	; set BORDCR = 0
-	LD (LB5C6),A	; set Time mode = time ticking
+	LD (TIMODE),A	; set Time mode = time ticking
 	LD (LB850),A	; clear HELD tile
 	LD (LD486+8),A	; set tile in Ninja sprite
 	;OUT ($FE),A	; set border black, sound off
@@ -3121,7 +3120,7 @@ LB724:
 	CALL DRALL	; Draw tile map on the screen
 ;
 	LD HL,LD34D	; Table of objects address
-	LD B,$23	; 35 objects
+	LD B,19		; 29 objects
 LB753:	PUSH HL		; save address in Table of objects
 	LD A,(ROOM)	; get Current Room address, low byte
 	CP (HL)
@@ -3155,11 +3154,11 @@ LB77B:	EI
 	;RST $38
 	;DI
 	;LD A,($5C08)	; get LASTK
-	LD A,(LB5C6)	; get Time mode
+	LD A,(TIMODE)	; get Time mode
 	CP $01		; time stopped?
 	JP Z,LB7AF	; yes =>
 ; Decrease Time, check if Time is out
-LB78B:	LD HL,LB5C4	; address for Time fast counter
+LB78B:	LD HL,TIMECN	; address for Time fast counter
 	DEC (HL)	; decrease the counter
 	JP NZ,LB7AF	; not zero => skip Time decrease
 	LD (HL),$28	; reset fast counter to 50
@@ -3182,7 +3181,7 @@ LB7AF:	LD A,(LD287+4)	; check Object #7 in Table of objects D256
 	CP $D6		; BOMB tile in the place of Diskette?
 	JP NZ,LB7ED	; no => skip
 ; BOMB ticking mode
-LB7B6:	LD HL,LB5C6	; Time mode address
+LB7B6:	LD HL,TIMODE	; Time mode address
 	LD A,$02
 	CP (HL)		; already in BOMB ticking mode?
 	JP Z,LB7ED
@@ -3194,7 +3193,7 @@ LB7B6:	LD HL,LB5C6	; Time mode address
 LB7CA:	LD HL,$3939	; !!MUT-ARG!! "99" bomb timer initial value
 	LD (LAD57),HL	; set Indicator Time value
 	LD A,$01
-	LD (LB5C4),A
+	LD (TIMECN),A
 	LD HL,$EA76 ;TODO
 	LD DE,$001C	; 28
 	;LD C,$03
@@ -3255,7 +3254,7 @@ LB833:	LD A,(DE)	; get byte +$04/$05/$06
 
 ; Increase Energy a bit
 LB83C:	LD A,(NRJLO)	; get Energy lower
-	RRC A
+	rrca
 	LD (NRJLO),A	; set Energy lower
 	RET NC
 	LD HL,NRJ	; Energy address
@@ -3305,7 +3304,7 @@ LB8B0:	LD HL,LB850	; HELD tile address
 	CP $00
 	JP Z,LB8C2
 	SUB $C6
-	SRL A
+	rra	; SRL A
 LB8C2:	ld hl,$C167	; HELD screen address
 	CALL DRITEM	; Draw NEAR/HELD item
 LB8C9:	XOR A
@@ -3374,29 +3373,70 @@ LB922:	LD HL,TLSCR3	; Tile screen 3 start address
 
 ; Standard room procedure (for 63 rooms)
 LB41F: ;redirect
+; Loop by three objects in LA39F table
 LB937:	ld hl,LA39F	; Three objects start address
 	LD B,3
 LB93D:	PUSH BC		; save loop counter
 	ld a,(hl)	; have an object here?
 	or a
 	JP Z,LBA21	; no => skip to end of loop
-	push hl
-	pop ix		; switch to ix for object address
+	push hl		; save object address
+	call LB94D	; process this object
+	pop hl		; restore object address
+LBA21:	POP BC		; restore loop counter
+	LD DE,$0007
+	add hl,de	; next object record
+	DEC B
+	JP NZ,LB93D	; continue loop by objects
 ;
+; Fill "need update" marks
+LBA2A:	LD HL,TLSCR1+165	; !!MUT-ARG!!
+LBA2D:	LD B,$03
+LBA2F:	LD C,$03
+	PUSH HL
+LBA32:	LD (HL),$01
+	INC HL
+	DEC C
+	JP NZ,LBA32
+	POP HL
+	PUSH DE
+	LD DE,$001E	; +30
+	ADD HL,DE
+	POP DE
+	dec b
+	jp nz,LBA2F
+;
+	CALL DRALL	; Draw tile map on the screen
+;
+	LD HL,LB1FC	; Restore drawing of Dog and Guard tiles
+	LD (LB1F9+1),HL
+	LD HL,LBAB2	; Explosion counter address
+	XOR A
+	CP (HL)
+	jp z,LB77B	; no Explosion => Game loop start
+	dec (HL)	; decrement Explosion counter
+	call LBA52	; Draw Explosion image and make some noise
+	jp LB77B	; => Game loop start
+
+; Process this object
+; HL = object address in LA39F table
+LB94D:	CALL LBBAE_HL	; set "need update" mark for object
+	;CALL LBBAE	; set "need update" mark for object
 	LD A,$03
 	LD (LB94F+2),A
-	CALL LBBAE	; set "need update" mark for object
 	LD B,$02
+	push hl
+	pop ix		; switch to ix for object address
 LB94F:	LD A,(IX+$03)	; !!MUT-ARG!!
 	LD DE,$0000
 	CP $03
 	JP NC,LB95F
 	LD DE,$FFE2	; -30
-	DEC (IX+$05)
+	DEC (IX+$05)	; decrement object Y
 LB95F:	CP $06
 	JP C,LB969
 	LD DE,$001E	; +30
-	INC (IX+$05)
+	INC (IX+$05)	; increment object Y
 LB969:	CP $01
 	JP Z,LB98D
 	CP $04
@@ -3404,7 +3444,7 @@ LB969:	CP $01
 	CP $07
 	JP Z,LB98D
 	DEC DE
-	DEC (IX+$06)
+	DEC (IX+$06)	; decrement object X
 	CP $03
 	JP Z,LB98D
 	CP $00
@@ -3413,19 +3453,19 @@ LB969:	CP $01
 	JP Z,LB98D
 	INC DE
 	INC DE
-	INC (IX+$06)
+	INC (IX+$06)	; increment object X
 	INC (IX+$06)
 LB98D:	LD L,(IX+$01)
-	LD H,(IX+$02)
+	LD H,(IX+$02)	; get object position
 	ADD HL,DE
 	LD (IX+$01),L
-	LD (IX+$02),H
-	LD A,(IX+$05)
+	LD (IX+$02),H	; update object position
+	LD A,(IX+$05)	; get object Y
 	CP $FF
 	JP Z,LBBA7
 	CP $11
 	JP Z,LBBA7
-	LD A,(IX+$06)
+	LD A,(IX+$06)	; get object X
 	CP $1E
 	JP Z,LBBA7
 	CP $FF
@@ -3473,122 +3513,19 @@ LB9F9:	PUSH HL
 	JP NZ,LB94F
 	LD DE,TLSCR2	; Tile screen 2 start address
 	ADD HL,DE
-	LD A,(HL)
+	LD A,(HL)	; get tile from Ninja screen
 	CP $C8
 	JP NC,LBA14
-	LD B,20
+	LD B,20		; Ninja hit by the object
 	CALL NRJDEC	; Decrease Energy by B = 20
-	JP LBAD5
+	JP LBAD5	; delete the object
 LBA14:	LD A,(IX+$00)
-	LD (HL),A
+	LD (HL),A	; put object tile on Tile screen 2
 	XOR $01
 	LD (IX+$00),A
 	CALL LBBAE	; set "need update" mark for object
-
-LBA20:	push ix
-	pop hl		; restore object address in HL
-LBA21:	POP BC		; restore loop counter
-	LD DE,$0007
-	add hl,de	; next object record
-	DEC B
-	JP NZ,LB93D	; continue loop by objects
+	ret
 ;
-; Fill "need update" marks
-LBA2A:	LD HL,TLSCR1+165	; !!MUT-ARG!!
-LBA2D:	LD B,$03
-LBA2F:	LD C,$03
-	PUSH HL
-LBA32:	LD (HL),$01
-	INC HL
-	DEC C
-	JP NZ,LBA32
-	POP HL
-	PUSH DE
-	LD DE,$001E	; +30
-	ADD HL,DE
-	POP DE
-	dec b
-	jp nz,LBA2F
-	CALL DRALL	; Draw tile map on the screen
-	LD HL,LB1FC	; Restore drawing of Dog and Guard tiles
-	LD (LB1F9+1),HL
-	LD HL,LBAB2
-	XOR A
-	CP (HL)
-	JP Z,LB77B	; => Game loop start
-
-; Draw Explosion image on the screen and make some noise
-LBA52:	LD A,$10
-	;OUT ($FE),A
-	DEC (HL)
-LBA57:	LD HL,$C0D0	; !!MUT-ARG!! address on the screen
-LBA5A:	LD DE,LABE5	; !!MUT-ARG!! Explosion image address
-LBA5D:	LD B,$03	; !!MUT-ARG!!
-LBA5F:	LD C,$03	; !!MUT-ARG!!
-	PUSH HL
-	PUSH DE
-LBA63:	PUSH HL
-	PUSH BC
-	LD B,$08
-LBA67:	LD A,(DE)
-	LD (HL),A
-	INC DE
-	dec l ;INC H
-	dec b
-	jp nz,LBA67
-	POP BC
-	POP HL
-	INC HL
-	DEC C
-	JP NZ,LBA63
-	POP DE
-	LD HL,$0018
-	ADD HL,DE
-	EX DE,HL
-	POP HL
-	PUSH DE
-	ld DE,$FFF8	; 8 lines down
-	;RR H
-	;RR H
-	;RR H
-	ADD HL,DE
-	;RL H
-	;RL H
-	;RL H
-	POP DE
-	dec b
-	jp nz,LBA5F
-LBA8E:	LD HL,$E8D0	; !!MUT-ARG!!
-LBA91:	;LD B,$03
-	;LD DE,$0020
-LBA96:	;LD C,$03	; !!MUT-ARG!!
-	;PUSH HL
-LBA99:	;LD A,(HL)
-	;AND $F8
-	;OR $42
-	;LD (HL),A	; set attribute
-	;INC HL
-	;DEC C
-	;JP NZ,LBA99
-	;POP HL
-	;ADD HL,DE
-	;dec b
-	;jp nz,LBA96
-	LD A,$72
-LBAA9:	LD ($E8F1),A	; !!MUT-ARG!!
-	XOR A
-	;OUT ($FE),A
-	JP LB77B	; => Game loop start
-
-LBAB2:	DEFB $00	; ??
-
-; Screen addresses for every 17 rows, used for Explosion drawing
-LBAB3:	DEFW $C1FF,$C1F7,$C1EF,$C1E7
-LBABB:	DEFW $C1DF,$C1D7,$C1CF,$C1C7
-LBAC3:	DEFW $C1BF,$C1B7,$C1AF,$C1A7
-LBACB:	DEFW $C19F,$C187,$C17F,$C177
-LBAD3:	DEFW $C16F
-
 ; Called from logic in Standard room procedure, see B937
 ; IX = object address in LA39F table
 LBAD5:	CALL LFA28
@@ -3695,7 +3632,78 @@ LBB7C:	LD A,B
 
 LBBA7:	XOR A
 	LD (IX+$00),A
-	JP LBA20
+	ret
+
+; Draw Explosion image and make some noise
+LBA52:	LD A,$10
+	;OUT ($FE),A
+LBA57:	LD HL,$C0D0	; !!MUT-ARG!! address on the screen
+LBA5A:	LD DE,LABE5	; !!MUT-ARG!! Explosion image address
+LBA5D:	LD B,$03	; !!MUT-ARG!!
+LBA5F:	LD C,$03	; !!MUT-ARG!!
+	PUSH HL
+	PUSH DE
+LBA63:	PUSH HL
+	PUSH BC
+	LD B,$08
+LBA67:	LD A,(DE)
+	LD (HL),A
+	INC DE
+	dec l ;INC H
+	dec b
+	jp nz,LBA67
+	POP BC
+	POP HL
+	INC HL
+	DEC C
+	JP NZ,LBA63
+	POP DE
+	LD HL,$0018
+	ADD HL,DE
+	EX DE,HL
+	POP HL
+	PUSH DE
+	ld DE,$FFF8	; 8 lines down
+	;RR H
+	;RR H
+	;RR H
+	ADD HL,DE
+	;RL H
+	;RL H
+	;RL H
+	POP DE
+	dec b
+	jp nz,LBA5F
+LBA8E:	LD HL,$E8D0	; !!MUT-ARG!!
+LBA91:	;LD B,$03
+	;LD DE,$0020
+LBA96:	;LD C,$03	; !!MUT-ARG!!
+	;PUSH HL
+LBA99:	;LD A,(HL)
+	;AND $F8
+	;OR $42
+	;LD (HL),A	; set attribute
+	;INC HL
+	;DEC C
+	;JP NZ,LBA99
+	;POP HL
+	;ADD HL,DE
+	;dec b
+	;jp nz,LBA96
+	LD A,$72
+LBAA9:	LD ($E8F1),A	; !!MUT-ARG!!
+	XOR A
+	;OUT ($FE),A
+	ret
+
+LBAB2:	DEFB $00	; ??
+
+; Screen addresses for every 17 rows, used for Explosion drawing
+LBAB3:	DEFW $C1FF,$C1F7,$C1EF,$C1E7
+LBABB:	DEFW $C1DF,$C1D7,$C1CF,$C1C7
+LBAC3:	DEFW $C1BF,$C1B7,$C1AF,$C1A7
+LBACB:	DEFW $C19F,$C187,$C17F,$C177
+LBAD3:	DEFW $C16F
 
 ; Set "need update" mark for object IX
 LBBAE:	LD L,(IX+$01)
@@ -3703,6 +3711,18 @@ LBBAE:	LD L,(IX+$01)
 	LD DE,TLSCR1	; Tile screen 1 start address
 	ADD HL,DE
 	LD (HL),$01	; set "need update" mark
+	RET
+; copy for HL as object address
+LBBAE_HL:
+	push hl
+	inc hl
+	ld e,(hl)
+	inc hl
+	ld d,(hl)
+	ld hl,TLSCR1	; Tile screen 1 start address
+	add hl,de
+	ld (hl),$01	; set "need update" mark
+	pop hl
 	RET
 
 ; Set update flags for Ninja, 6x7 tiles
@@ -3773,6 +3793,18 @@ ReadInput_map:                        ; 7   6   5   4   3   2   1   0
   DB $04,$01,$08,$02,$10,$10,$10,$10  ; Dn  Rt  Up  Lt  ZB  VK  PS  Tab
   DW JoystickP
   DB $10,$10,$00,$00,$04,$08,$02,$01  ; Fr  Fr  --  --  Dn  Up  Lt  Rt
+
+WaitAnyInput:
+	call LBBDF	; Read input
+	and $1F		; mask for 5 bits
+	ret nz
+	jp WaitAnyInput
+
+WaitNoInput:
+	call LBBDF	; Read input
+	and $1F		; mask for 5 bits
+	ret z
+	jp WaitNoInput
 
 ; Clear the whole screen
 ClearScreen:
@@ -3903,7 +3935,7 @@ LBCCC:	LD HL,LB595	; action cooldown counter
 	LD A,$9C
 	CP (HL)
 	JP NZ,LBCF3
-	LD A,(LB5C6)	; get Time mode
+	LD A,(TIMODE)	; get Time mode
 	CP $02		; BOMB ticking mode?
 	JP Z,LBD37	; yes =>
 	JP LBCF7
@@ -3911,13 +3943,15 @@ LBCF3:	XOR A
 	CP B		; Object tile = nothing?
 	JP Z,LBD37	; nothing =>
 LBCF7:	LD A,(LB850)	; get HELD tile
-	LD DE,(LB84A)	; get Object address + 4
+	ex de,hl
+	ld hl,(LB84A)	; get Object address + 4
+	ex de,hl
 	LD (DE),A	; set Object tile
 	DEC DE
 	or a		; held nothing?
 	JP Z,LBD08	; nothing =>
 	SUB $C6
-	SRL A
+	rra	; SRL A
 LBD08:	LD (DE),A
 	LD A,$09
 	LD (LD287+3),A	; set ?? in Object #7 in Table of objects D256
@@ -3925,7 +3959,7 @@ LBD08:	LD (DE),A
 	LD (LBD79+1),A
 	CP $D4
 	JP NZ,LB8D0	; => Update Ninja on tilemap
-	LD HL,LB5C6	; Time mode address
+	LD HL,TIMODE	; Time mode address
 	XOR A		; 0 = time ticking
 	CP (HL)
 	JP NZ,LB8D0	; => Update Ninja on tilemap
@@ -4031,8 +4065,8 @@ LBDD4:	LD HL,LBBD4	; Movement handler address
 LBDDD:	LD A,(INPUTB)	; get Input bits
 	and $08		; BIT 3,A	; check UP bit
 	JP Z,LBFBA
-	LD HL,TLSCR0+30
-	LD DE,(NJAPOS)	; get Ninja position in tilemap
+	ld de,TLSCR0+30
+	ld hl,(NJAPOS)	; get Ninja position in tilemap
 	ADD HL,DE
 	LD A,$DA
 	CP (HL)
@@ -4100,7 +4134,7 @@ LBE63:	LD A,$C9	; command = $C9 RET
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
 
 ; Time is out
-LBE71:	LD A,(LB5C6)	; get Time mode
+LBE71:	LD A,(TIMODE)	; get Time mode
 	CP $02		; BOMB ticking mode?
 	JP Z,LBE80	; yes =>
 	LD HL,LBF35	; "TIME OUT" / "MISSION TERMINATED"
@@ -4256,12 +4290,12 @@ LBFD5:	LD B,10		; 10 hundred
 	LD B,A
 	CALL LB4DE	; Increase PAY value by B * 100
 	LD DE,$C86B
-	LD HL,LE1EC	; Skill level address
+	LD HL,LEVED	; Skill level address
 	LD C,$01
 	CALL PRSTR	; Print skill level digit
 	LD A,$14	; "INC D" instruction code
 	LD (LBEDF),A
-LC04A:	LD A,(LB5C6)	; get Time mode
+LC04A:	LD A,(TIMODE)	; get Time mode
 	CP $02		; BOMB ticking mode?
 	JP NZ,LC056	; no =>
 	LD B,100	; 100 hundred
@@ -4301,21 +4335,21 @@ LC0AB:	PUSH HL
 	POP HL
 	PUSH BC
 	LD BC,$0020
-	RR H
-	RR H
-	RR H
+	;RR H
+	;RR H
+	;RR H
 	ADD HL,BC
-	RL H
-	RL H
-	RL H
+	;RL H
+	;RL H
+	;RL H
 	EX DE,HL
-	RR H
-	RR H
-	RR H
+	;RR H
+	;RR H
+	;RR H
 	ADD HL,BC
-	RL H
-	RL H
-	RL H
+	;RL H
+	;RL H
+	;RL H
 	EX DE,HL
 	POP BC
 	DEC C
@@ -4885,9 +4919,9 @@ LC57B:	LD A,(NJADIR)	; get Ninja direction
 	ADD A,A
 	ADD A,A
 	ADD A,L		; * 5
-	LD L,A
-	LD H,$00
-	LD DE,(NJAPOS)	; get Ninja position in tilemap
+	ld e,a
+	ld d,$00
+	ld hl,(NJAPOS)	; get Ninja position in tilemap
 	ADD HL,DE
 	LD DE,TLSCR0	; Tile screen 0 start address
 	ADD HL,DE
@@ -5046,7 +5080,9 @@ LC6A5:	LD A,(NJAX)	; get Ninja X
 	JP NZ,LB937	; => Standard room procedure
 	LD A,$4B
 	LD (L7343),A	; set counter = 75
-	LD DE,(NJAPOS)	; get Ninja position in tilemap
+	ex de,hl
+	ld hl,(NJAPOS)	; get Ninja position in tilemap
+	ex de,hl
 	LD A,(NJAX)	; get Ninja X
 	INC A
 	LD B,A
@@ -5062,10 +5098,11 @@ LC6A5:	LD A,(NJAX)	; get Ninja X
 	DEC DE
 LC6CD:	LD A,B
 	LD (NJAX),A	; set Ninja X
-	LD (NJAPOS),DE	; set Ninja position in tilemap
-	LD DE,LD486	; Sprite Ninja/Guard standing
-	LD (NJASPR),DE	; set Ninja sprite
 	LD (LB8CD+1),HL	; set Movement handler
+	ex de,hl
+	ld (NJAPOS),hl	; set Ninja position in tilemap
+	ld hl,LD486	; Sprite Ninja/Guard standing
+	ld (NJASPR),hl	; set Ninja sprite
 	JP LB937	; => Standard room procedure
 
 ; Movement handler (B8CE handler): Train moving left
@@ -5172,20 +5209,20 @@ LDF4C:	;PUSH DE
 	;JP NZ,LDF4C
 
 ; Main menu
-LDF60:	CALL LDEC1	; Clear strings on the screen
+LDF60:	ei
+	CALL LDEC1	; Clear strings on the screen
 	LD HL,TITLE	; Menu messages address
 	LD DE,$CBFF
 	LD C,19
 	CALL PRSTR	; Print title string
-	LD DE,$CDDF
-	LD C,11
-	CALL PRSTR	; Print string "J KEMPSTON"
-	LD C,11
-	LD DE,$CDCF
-	CALL PRSTR	; Print string "K KEYBOARD"
-	LD C,$10
+	LD HL,LC082
+	LD C,7
+	LD DE,$CDAF
+	CALL PRSTR	; Print string "LEVEL N"
+	LD HL,LDF27
+	LD C,13
 	LD DE,$CD8F
-	CALL PRSTR	; Print string "S START MISSION"
+	CALL PRSTR	; Print string "START MISSION"
 	CALL LE04D	; Clear key buffer playing melody
 	CALL LDFDB	; Highlight Menu item
 	LD DE,$00D4
@@ -5193,29 +5230,70 @@ LDF97:	PUSH DE
 	CALL LE440	; Play next note in melody
 	CALL LDFD4	; Clear LASTK and do RST $38 once
 	POP DE
-	;LD A,($5C08)	; get LASTK
-	;CP $61
-	;JP C,LDFA8
-	;SUB $20
-LDFA8:	;CP $53		; 'S' ?
-	;JP Z,LE2A7	; => Start Mission
-	;CP $4A		; 'J' ?
-	;JP Z,LDFF1	; => Joystick selected
-	;CP $4B		; 'K' ?
-	;JP Z,LE004	; => Keyboard selected
-	;LD A,(INPUTM)	; get Input method
-	;CP $01		; Joystick?
-	;JP NZ,LDFCC
-	;IN A,($1F)	; read joystick port
-	;BIT 4,A
-	;JP NZ,LE2A7	; => Start Mission
-	JP LE2A7 ;DEBUG
+	call WaitNoInput
+	ld a,(MenuItem)
+	or a
+	jp nz, MENUL
+; Menu item "START MISSION"
+MENUS:	ld hl,$ED86
+	ld (LDFDB+1),hl
+	call LDFDB	; Highlight Menu item
+_00:	call LBBDF	; Read input
+	rrca		; Right - do nothing
+	rrca		; Left - do nothing
+	rrca		; Down - do nothing
+	rrca		; Up ?
+	jp nc,_10	; no =>
+	ld a,1
+	ld (MenuItem),a
+	call LDFE6	; Unhighlight Menu item
+	jp MENUL
+_10:	rrca		; Fire ?
+	jp nc,_00	; => Start Mission
+	call WaitNoInput
+	jp LE2A7
+; Menu item "LEVEL"
+MENUL:
+	ld hl,$EDA6
+	ld (LDFDB+1),hl
+	call LDFDB	; Highlight Menu item
+_00:	call LBBDF	; Read input
+	rrca		; Right?
+	jp nc,_10
+	ld a,(LEVED)
+	inc a
+	cp $39+1
+	jp nc,_00
+	ld (LEVED),a
+	jp LDF60
+_10:	rrca		; Left?
+	jp nc,_20
+	ld a,(LEVED)
+	dec a
+	cp $30		; '0'
+	jp z,_00
+	ld (LEVED),a
+	jp LDF60
+_20:	rrca		; Down?
+	jp nc,_30	; no =>
+	xor a
+	ld (MenuItem),a
+	call LDFE6	; Unhighlight Menu item
+	jp MENUS
+_30:	rrca		; Up - do nothing
+	rrca
+	;TODO: check Fire
+	jp _00
+MenuItem: DEFB 0	; 0 = START, 1 = LEVEL
+
+LDFA8:
 ; Entry point
-LDFCC:	DEC DE
-	LD A,D
-	OR E
-	JP NZ,LDF97
-LDFD1:	JP LBC3B
+LDFCC:	;DEC DE
+	;LD A,D
+	;OR E
+	;JP NZ,LDF97
+	;jp LDF97	; continue menu loop
+;LDFD1:	JP LBC3B
 
 ; Clear LASTK and do RST $38 once
 LDFD4:	XOR A
@@ -5225,7 +5303,7 @@ LDFD4:	XOR A
 	RET
 
 ; Highlight Menu item
-LDFDB:	LD HL,$ECD6
+LDFDB:	LD HL,$ED86
 	LD B,$0D
 LDFE0:	LD (HL),$55
 	inc h
@@ -5241,23 +5319,6 @@ LDFEB:	LD (HL),$00
 	dec b
 	jp nz,LDFEB
 	RET
-
-; Joystick selected in Main menu
-LDFF1:	CALL LDFE6	; Unhighlight Menu item
-	LD HL,$ECD6
-	LD (LDFDB+1),HL
-	CALL LDFDB	; Highlight Menu item
-	LD A,$01
-	LD (INPUTM),A
-	JP LDFCC
-
-; Keyboard selected in Main menu
-LE004:	CALL LDFE6	; Unhighlight Menu item
-	LD HL,$ECC6
-	LD (LDFDB+1),HL
-	CALL LDFDB	; Highlight Menu item
-	LD HL,LE043
-	;JP LE024
 
 ; Entry point
 LE024:	LD DE,INPUTM
@@ -5354,7 +5415,7 @@ LE2CD:	;CALL LE440	; Play next note in melody
 	;JP C,LE2CD
 	;CP $3A
 	;JP NC,LE2CD
-	;LD HL,LE1EC	; Skill level address
+	;LD HL,LEVED	; Skill level address
 	;LD (HL),A
 	;LD DE,$C0F4
 	;LD C,$01
@@ -5375,7 +5436,7 @@ LE2CD:	;CALL LE440	; Play next note in melody
 	LD DE,$D0C7
 	LD C,$07
 	CALL PRSTR	; Print string "WILL BE"
-	LD A,(LE1EC)	; get Skill level
+	LD A,(LEVED)	; get Skill level
 	SUB $31
 	LD L,A
 	LD H,$00
@@ -5437,10 +5498,11 @@ LE343:	ex de,hl
 	LD DE,LD357	; address for BOMB in Table of objects D34D
 	call LDIR_B	; Copy last 4 bytes: BOMB placement
 	LD DE,$0019
-LE374:	PUSH DE
-	;CALL LDFD4	; Clear LASTK and do RST $38 once
+;
+	call WaitAnyInput
+LE374:	;PUSH DE
 	;CALL LE440	; Play next note in melody
-	POP DE
+	;POP DE
 	;LD A,($5C08)	; get LASTK
 	;CP $00
 	;RET NZ
@@ -5453,45 +5515,45 @@ LE388:	DEFM " 10"
 LE38B:	DEFB $0A
 
 ; Play next note in melody
-LE440:	LD IX,$E51C
-	LD A,(IX+$01)
-	CP $FF
-	JP Z,LE487
-	CP $FE
-	JP Z,LE477
-	CP $FD
-	JP Z,LE46F
-	LD L,(IX+$00)
-	LD H,A
-	LD E,(IX+$02)
-	LD D,(IX+$03)
-	PUSH IX
-	;CALL $03B5	; BEEPER
-	NOP
-	POP IX
-	LD DE,$0004
-LE468:	ADD IX,DE
-	LD (LE440+2),IX
+LE440:	;LD IX,$E51C
+	;LD A,(IX+$01)
+	;CP $FF
+	;JP Z,LE487
+	;CP $FE
+	;JP Z,LE477
+	;CP $FD
+	;JP Z,LE46F
+	;LD L,(IX+$00)
+	;LD H,A
+	;LD E,(IX+$02)
+	;LD D,(IX+$03)
+	;PUSH IX
+	;;CALL $03B5	; BEEPER
+	;NOP
+	;POP IX
+	;LD DE,$0004
+LE468:	;ADD IX,DE
+	;LD (LE440+2),IX
 	RET
-LE46F:	LD DE,LE4AE
-	LD HL,LE496
-	JP LE47E
-LE477:	LD HL,LE49A
-	LD E,(HL)
-	INC HL
-	LD D,(HL)
-	INC HL
-LE47E:	ld (LE440+2),hl
-	ex de,hl
-	ld (LE477+1),hl
-	JP LE440
-LE487:	LD BC,$4E20
-LE48A:	DEC BC
-	LD A,B
-	OR C
-	JP NZ,LE48A
-	LD DE,$0002
-	JP LE468
+LE46F:	;LD DE,LE4AE
+	;LD HL,LE496
+	;JP LE47E
+LE477:	;LD HL,LE49A
+	;LD E,(HL)
+	;INC HL
+	;LD D,(HL)
+	;INC HL
+LE47E:	;ld (LE440+2),hl
+	;ex de,hl
+	;ld (LE477+1),hl
+	;JP LE440
+LE487:	;LD BC,$4E20
+LE48A:	;DEC BC
+	;LD A,B
+	;OR C
+	;JP NZ,LE48A
+	;LD DE,$0002
+	;JP LE468
 
 ; Table for melodies
 LE494:	DEFW LE4AE
@@ -5615,10 +5677,10 @@ LF97D:	LD A,(DE)
 	JP LB422
 
 ; Sound ??
-LF9A1:	RL B
-	RL B
-	RL B
-	RL B
+LF9A1:	;RL B
+	;RL B
+	;RL B
+	;RL B
 	LD HL,$0000
 LF9AC:	LD A,(HL)
 	AND $F8
