@@ -298,12 +298,12 @@ L7D5A:	DEFW	LB483	; Room procedure
 	DEFW	LA14A	; Initialization
 	DEFW	L7BD2	; Room to Left
 	DEFW	L7C2E	; Room to Right
-	DEFW	0	; Room to Up
+	DEFW	L7F85	; Room to Up (extra room)
 	DEFW	L7B56	; Room to Down
 	DEFRT04 $01			; Fill entire screen with 01
 	DEFRT03 $FF, 30,6, TLSCR0+0	; Rectangle 30x6 tiles with FF at 6590
 	DEFRT0C L7C2A, 2, 16, TLSCR0+11	; Block 2 tiles from 7C2A to 659B copy 16 times
-	DEFRT02 2, $EA, TLSCR0+161	; Fill horz 2 tiles with EA at 6631
+;REMOVED DEFRT02 2, $EA, TLSCR0+161	; Fill horz 2 tiles with EA at 6631
 	DEFRT02 30, $FF, TLSCR0+480	; Fill horz 30 tiles with FF at 6770
 	DEFRT03 $FF, 6,3, TLSCR0+414	; Rectangle 6x3 tiles with FF at 672E
 	DEFRT08 $FF, 2, TLSCR0+443	; Triangle with FF, count=2 at 674B
@@ -2470,6 +2470,23 @@ LB513:	DEFW	LB446	; Room procedure
 	DEFRT02 30, $F5, TLSCR0+480	; Fill horz 30 tiles with F5 at 6770
 	DEFRT02 30, $0B, TLSCR5+360	; Fill horz 30 tiles with 0B at 70EE
 	DEFRT03 $0C, 30,3, TLSCR5+390	; Rectangle 30x3 tiles with 0C at 710C
+	DEFB	$FF	; End of sequence
+
+; Room 7F85: Extra room between rooms 8162 and 7DA9
+L7F85:	DEFW	LB937	; Room procedure
+	DEFW	LB422	; Initialization
+	DEFW	0	; Room to Left
+	DEFW	0	; Room to Right
+	DEFW	0	; Room to Up
+	DEFW	L7D5A	; Room to Down
+	DEFRT04 $FF			; Fill entire screen with FF
+	DEFRT03 $02, 22,15, TLSCR0+4	; Rectangle 22x15 tiles with 02 at 6594
+	DEFRT03 $02, 4,11, TLSCR0+146	; Rectangle 4x11 tiles with 02 at 6622
+	DEFRT01 11, $EB, TLSCR0+148	; Fill vert 11 tiles with EB at 6624
+	DEFRT05 6,2, L7188, TLSCR5+394	; Block 6x2 tiles from 7188 - pile
+	DEFRT05 6,2, L7188, TLSCR5+404	; Block 6x2 tiles from 7188 - pile
+	DEFRT05 6,2, L7188, TLSCR5+410	; Block 6x2 tiles from 7188 - pile
+	DEFRT0C L7984, 2, 2, TLSCR0+461	; Block 2 tiles from 7984 copy 2 times
 	DEFB	$FF	; End of sequence
 
 ;----------------------------------------------------------------------------

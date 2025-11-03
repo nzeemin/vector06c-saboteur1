@@ -120,6 +120,16 @@ MIRROR:	DEFB	$00,$80,$40,$C0,$20,$A0,$60,$E0,$10,$90,$50,$D0,$30,$B0,$70,$F0
 IF (MIRROR AND $FF) NE 0		; Make sure the Mirror table properly aligned
 	.ERROR "Mirror table address should be aligned so lower byte is 0!"
 ENDIF
+;
+; Screen addresses for every 17 rows, used for Explosion drawing
+LBAB3:	DEFW $C1FF,$C1F7,$C1EF,$C1E7
+	DEFW $C1DF,$C1D7,$C1CF,$C1C7
+	DEFW $C1BF,$C1B7,$C1AF,$C1A7
+	DEFW $C19F,$C187,$C17F,$C177
+	DEFW $C16F
+IF (LBAB3 AND $FF) NE 0		; Make sure the LBAB3 table properly aligned
+	.ERROR "LBAB3 table address should be aligned so lower byte is 0!"
+ENDIF
 
 ; Guards data, 24 records, 6 bytes each
 ; +$04: Guard state, initially $0A
@@ -3426,16 +3436,16 @@ LB94D:	CALL LBBAE_HL	; set "need update" mark for object
 	LD (LB94F+2),A
 	LD B,$02
 	push hl
-	pop ix		; switch to ix for object address
+	pop ix		; switch to IX for object address
 LB94F:	LD A,(IX+$03)	; !!MUT-ARG!!
-	LD DE,$0000
+	LD DE,$0000	; offset = 0
 	CP $03
 	JP NC,LB95F
-	LD DE,$FFE2	; -30
+	LD DE,$FFE2	; offset = -30
 	DEC (IX+$05)	; decrement object Y
 LB95F:	CP $06
 	JP C,LB969
-	LD DE,$001E	; +30
+	LD DE,$001E	; offset = +30
 	INC (IX+$05)	; increment object Y
 LB969:	CP $01
 	JP Z,LB98D
@@ -3452,7 +3462,7 @@ LB969:	CP $01
 	CP $06
 	JP Z,LB98D
 	INC DE
-	INC DE
+	INC DE		; offset += 2
 	INC (IX+$06)	; increment object X
 	INC (IX+$06)
 LB98D:	LD L,(IX+$01)
@@ -3466,9 +3476,9 @@ LB98D:	LD L,(IX+$01)
 	CP $11
 	JP Z,LBBA7
 	LD A,(IX+$06)	; get object X
-	CP $1E
+	CP $1E		; X = 30 ?
 	JP Z,LBBA7
-	CP $FF
+	CP $FF		; X = -1 ?
 	JP Z,LBBA7
 	PUSH HL
 	LD DE,TLSCR0	; Tile screen 0 start address
@@ -3483,50 +3493,57 @@ LB98D:	LD L,(IX+$01)
 	LD A,(HL)
 	POP HL
 	INC A
-	JP Z,LB9DA
-	LD A,(DOGST)
-	CP $42
-	JP NC,LBAD5
-	ADD A,$42
-	LD (DOGST),A
-	JP LBAD5
+	jp nz,LB9CA	; => Dog hit by the object
 LB9DA:	PUSH HL
 	LD DE,TLSCR4	; Tile screen 4 start address
 	ADD HL,DE
-	LD A,(HL)
+	LD A,(HL)	; get tile from Guard screen
 	POP HL
-	INC A
-	JP Z,LB9F9
-	LD A,(GARDST)	; get Guard state
-	CP $09		; Guard state = $09 dead ?
-	JP Z,LBAD5	; already dead =>
-	LD A,$09
-	LD (GARDST),A	; set Guard state = $09 dead
-	LD B,1		; 1 hundred
-	CALL LB4DE	; Increase PAY value by 100 - Guard killed by weapon
-	JP LBAD5
+	INC A		; $FF?
+	jp nz,LB9E4	; no => Guard hit by the object
 LB9F9:	PUSH HL
 	LD HL,LB94F+2
 	INC (HL)
 	POP HL
 	DEC B
 	JP NZ,LB94F
+;
 	LD DE,TLSCR2	; Tile screen 2 start address
 	ADD HL,DE
 	LD A,(HL)	; get tile from Ninja screen
 	CP $C8
-	JP NC,LBA14
-	LD B,20		; Ninja hit by the object
-	CALL NRJDEC	; Decrease Energy by B = 20
-	JP LBAD5	; delete the object
-LBA14:	LD A,(IX+$00)
-	LD (HL),A	; put object tile on Tile screen 2
-	XOR $01
-	LD (IX+$00),A
-	CALL LBBAE	; set "need update" mark for object
+	jp c,LBA0C	; => Ninja hit by the object
+LBA14:	ex de,hl
+	push ix
+	pop hl		; switch back to HL for object address
+	ld a,(hl)
+	ld (de),a	; put object tile on Tile screen 2
+	XOR $01		; flip object tile
+	ld (hl),a
+	call LBBAE_HL	; set "need update" mark for object
 	ret
+; Dog hit by the object
+LB9CA:	LD A,(DOGST)
+	CP $42
+	JP NC,LBAD5
+	ADD A,$42
+	LD (DOGST),A
+	JP LBAD5
+; Guard hit by the object
+LB9E4:	LD A,(GARDST)	; get Guard state
+	CP $09		; Guard state = $09 dead ?
+	JP Z,LBAD5	; already dead =>
+	LD A,$09
+	LD (GARDST),A	; set Guard state = $09 dead
+	LD B,1		; 1 hundred
+	CALL LB4DE	; Increase PAY value by 100 - Guard killed by weapon
+	JP LBAD5	; => delete the object
+; Ninja hit by the object
+LBA0C:	LD B,20		; Ninja hit by the object
+	CALL NRJDEC	; Decrease Energy by B = 20
+	;JP LBAD5	; => delete the object
 ;
-; Called from logic in Standard room procedure, see B937
+; This object should be deleted, Granade explode
 ; IX = object address in LA39F table
 LBAD5:	CALL LFA28
 	CP L8DCA AND $FF	; current room address low byte = $CA ?
@@ -3551,34 +3568,17 @@ LBAF0:	LD HL,LBAB2	; Explosion counter address
 	LD DE,TLSCR1-31	; + Tile screen 1 - 31
 	ADD HL,DE
 	LD (LBA2A+1),HL	; set Tile screen 1 address
-	LD H,$00
+	;LD (LBA8E+1),HL	; set screen attributes address
 	LD A,(IX+$05)	; get object Y
 	ADD A,A		; * 2
-	LD L,A
-	LD DE,$E800 ;TODO
-	ADD HL,HL
-	ADD HL,HL
-	ADD HL,HL
-	ADD HL,HL	; * 32
-	ADD HL,DE	; now HL = address in screen attributes
-	LD D,$00
-	LD E,(IX+$06)
-	ADD HL,DE
-	LD (LBA8E+1),HL	; set screen attributes address
-	LD (LBB2C+2),A
-	INC A
-	LD (LBB2F+2),A
-	PUSH IX
-	LD IX,LBAB3	; Address for table of screen addresses for 17 rows
-LBB2C:	LD L,(IX+$0C)	; !!MUT-ARG!!
-LBB2F:	LD H,(IX+$0D)	; !!MUT-ARG!!
-	POP IX
-	ADD HL,DE
+	ld l,a
+	ld H,LBAB3 SHR 8	; table of screen addresses for 17 rows
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a		; now HL = screen address of the row beginning
+	ADD HL,DE	;TODO
 	LD (LBA57+1),HL
-	LD HL,(LBA8E+1)
-	LD DE,$0021
-	ADD HL,DE
-	LD (LBAA9+1),HL
 	LD B,$03
 	LD C,$03
 	EXX
@@ -3586,7 +3586,7 @@ LBB2F:	LD H,(IX+$0D)	; !!MUT-ARG!!
 	EXX
 	LD HL,(LBA2A+1)
 	LD DE,$0000
-	LD A,(IX+$05)
+	LD A,(IX+$05)	; get object Y
 	CP $10
 	JP NZ,LBB59
 	DEC B
@@ -3629,7 +3629,7 @@ LBB7C:	LD A,B
 	EXX
 	LD (LBA5A+1),DE
 	EXX
-
+; Delete the object
 LBBA7:	XOR A
 	LD (IX+$00),A
 	ret
@@ -3639,8 +3639,8 @@ LBA52:	LD A,$10
 	;OUT ($FE),A
 LBA57:	LD HL,$C0D0	; !!MUT-ARG!! address on the screen
 LBA5A:	LD DE,LABE5	; !!MUT-ARG!! Explosion image address
-LBA5D:	LD B,$03	; !!MUT-ARG!!
-LBA5F:	LD C,$03	; !!MUT-ARG!!
+LBA5D:	LD B,$03	; !!MUT-ARG!! 1..3
+LBA5F:	LD C,$03	; !!MUT-ARG!! 1..3
 	PUSH HL
 	PUSH DE
 LBA63:	PUSH HL
@@ -3649,7 +3649,7 @@ LBA63:	PUSH HL
 LBA67:	LD A,(DE)
 	LD (HL),A
 	INC DE
-	dec l ;INC H
+	dec l 		; line down
 	dec b
 	jp nz,LBA67
 	POP BC
@@ -3664,17 +3664,11 @@ LBA67:	LD A,(DE)
 	POP HL
 	PUSH DE
 	ld DE,$FFF8	; 8 lines down
-	;RR H
-	;RR H
-	;RR H
 	ADD HL,DE
-	;RL H
-	;RL H
-	;RL H
 	POP DE
 	dec b
 	jp nz,LBA5F
-LBA8E:	LD HL,$E8D0	; !!MUT-ARG!!
+LBA8E:	LD HL,$E8D0	; !!MUT-ARG!! address in screen attributes
 LBA91:	;LD B,$03
 	;LD DE,$0020
 LBA96:	;LD C,$03	; !!MUT-ARG!!
@@ -3690,20 +3684,13 @@ LBA99:	;LD A,(HL)
 	;ADD HL,DE
 	;dec b
 	;jp nz,LBA96
-	LD A,$72
-LBAA9:	LD ($E8F1),A	; !!MUT-ARG!!
-	XOR A
+	;LD A,$72
+LBAA9:	;LD ($E8F1),A	; !!MUT-ARG!! address in screen attributes
+	;XOR A
 	;OUT ($FE),A
 	ret
 
 LBAB2:	DEFB $00	; ??
-
-; Screen addresses for every 17 rows, used for Explosion drawing
-LBAB3:	DEFW $C1FF,$C1F7,$C1EF,$C1E7
-LBABB:	DEFW $C1DF,$C1D7,$C1CF,$C1C7
-LBAC3:	DEFW $C1BF,$C1B7,$C1AF,$C1A7
-LBACB:	DEFW $C19F,$C187,$C17F,$C177
-LBAD3:	DEFW $C16F
 
 ; Set "need update" mark for object IX
 LBBAE:	LD L,(IX+$01)
@@ -3712,7 +3699,7 @@ LBBAE:	LD L,(IX+$01)
 	ADD HL,DE
 	LD (HL),$01	; set "need update" mark
 	RET
-; copy for HL as object address
+; Set "need update" mark for object HL
 LBBAE_HL:
 	push hl
 	inc hl
@@ -5338,10 +5325,6 @@ LE02C:	LD A,(HL)
 	dec b
 	jp nz,LE02C
 	JP LDFCC
-
-; Ports/bits for Protek and Keyboard
-LE039:	DEFB $EF,$01,$EF,$08,$EF,$10,$F7,$10,$EF,$04	; Protek ports/bits
-LE043:	DEFB $7F,$01,$FD,$01,$FE,$02,$7F,$08,$7F,$04	; Keyboard input ports/bits
 
 ; Clear key buffer playing melody
 LE04D:	CALL LE440	; Play next note in melody
