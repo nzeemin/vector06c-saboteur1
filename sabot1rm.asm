@@ -2757,6 +2757,11 @@ LA0AB:	DEFB $9C	; Back block 1x2
 LA0AD:	DEFB $93,$92,$00,$00	; Back block 4x2
 	DEFB $0D,$0D,$93,$92
 
+; Data for room with pier
+LC65A:	DEFB $E3,$E3,$E3,$F6,$F6,$E3,$E3,$E3
+	DEFB $F6,$F6,$E3,$E3,$E3,$E3,$E3,$E3
+	DEFB $E3
+
 ; Block 3x6 tiles for room 84A8
 LF98F:	DEFB $82,$83,$84	 ; Back block 3x6 - crane
 	DEFB $85,$86,$87

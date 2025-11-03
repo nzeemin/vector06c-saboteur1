@@ -11,9 +11,9 @@
 
 ;------------------------------------------------------------------------------
 
-;CHELTH	EQU 0		; Cheat code for no damage
-;CVERT	EQU 0		; Cheat code for short route to Helicopter
-;CBOMB	EQU 0		; Cheat code for carrying BOMB
+CHELTH EQU 1	; Cheat code for no damage
+CVERT  EQU 0	; Cheat code for short route to Helicopter
+;CBOMB EQU 0	; Cheat code for carrying BOMB
 
 ;----------------------------------------------------------------------------
 ; Variables
@@ -159,6 +159,9 @@ LA25F:	DEFB $0B,$00,$0B,$00,$0A,$01	; Room 8162 guard
 LA265:	DEFB $20,$01,$12,$09,$0A,$01	; Room 80A7 guard
 LA26B:	DEFB $30,$00,$12,$01,$0A,$01	; Room 9B9D guard
 
+; Guard data for rooms 7C9C/92EF
+LC66B:	DEFB $0E,$00,$0E,$00,$04,$00
+
 ; Dogs data, 19 records, 10 bytes each
 ; +$00/$01: Dog position in tilemap
 ; +$02: Dog direction
@@ -246,14 +249,6 @@ LB5B0:	DEFW LA7AD	; #0 Nothing
 	DEFW LAAA1	; #7 Disk
 	DEFW LAB0D	; #8 Bomb
 	DEFW LAB79	; #9 Console
-
-; Data for room with pier
-LC65A:	DEFB $E3,$E3,$E3,$F6,$F6,$E3,$E3,$E3
-	DEFB $F6,$F6,$E3,$E3,$E3,$E3,$E3,$E3
-	DEFB $E3
-
-; Guard data for rooms 7C9C/92EF
-LC66B:	DEFB $0E,$00,$0E,$00,$04,$00
 
 ; Table of 35 records, 2 bytes each, see B851
 LD210:	DEFB $04,$CE,$09,$63,$09,$63,$09,$63,$09,$63
@@ -729,6 +724,31 @@ L62B8: 	LD A,(DE)	; get picture byte
 ; Proceed to the next room token (redirect to B702)
 L734A:	JP LB702
 
+; Room token #00: Barrel, 3x3 tiles 7C21; params: 2 bytes (address)
+LB38F:	POP HL
+	INC HL
+	LD A,(HL)
+	INC HL
+	PUSH HL
+	LD H,(HL)
+	LD L,A
+	LD DE,L7C21	; Tile block address
+	LD C,$03
+LB39B:	LD B,$03
+LB39D:	LD A,(DE)
+	LD (HL),A
+	INC DE
+	INC HL
+	dec b
+	jp nz,LB39D
+	PUSH DE
+	LD DE,$001B
+	ADD HL,DE
+	POP DE
+	DEC C
+	JP NZ,LB39B
+	JP L734A	; => B702 Proceed to the next room token
+
 ; Room token #0E: Put one tile at the given address; params: 3 bytes (tile, address)
 L734D:	POP HL		; Restore token sequence address
 	INC HL		; Skip token byte
@@ -1045,11 +1065,6 @@ L74FA:	;LD A,(DE)
 	;EI
 	RET
 
-;L755C:
-;TODO
-
-;L9C39:	DEFB	$00,$00,$00,$00,$00,$00,$00
-
 ;----------------------------------------------------------------------------
 
 ; Process a dog
@@ -1267,7 +1282,9 @@ L9DD0:	LD (LB673+1),HL	; save current Dog data address
 
 ; Decrease Energy by B
 NRJDEC:	RET		; !!MUT-CMD!! $C5 PUSH BC or $C9 RET
+IF CHELTH EQ 0		; Cheat code for no damage
 	CALL L749E	; Decrease Energy
+ENDIF
 	POP BC
 	LD A,(NRJ)	; get Energy
 	CP $04		; Energy = MIN ?
@@ -2601,6 +2618,8 @@ MirrorByte:
 	pop hl
 	ret
 
+;------------------------------------------------------------------------------
+
 ; Object procedure: flip trigger "D": set/remove wall in room 9739
 LB320:	LD A,(L9755+1)
 	XOR $06
@@ -2631,11 +2650,12 @@ LB348:	LD A,(L7F7A+1)
 	LD (L7F7A+1),A
 
 ; Change Console color in NEAR, so we see that console action worked
+;TODO: Rework to not use attributes
 LB350:	LD HL,$EA7B	; address in screen attributes
 	LD DE,$001C	; 28
 	LD C,$03	; 3 rows
 LB358:	LD B,$04	; 4 columns
-LB35A:	LD A,(HL)
+LB35A:	;LD A,(HL)
 	XOR $06
 	LD (HL),A
 	INC HL
@@ -2676,32 +2696,7 @@ LB382:	dec b
 	JP NZ,LB374
 	RET
 
-; Room token #00: Barrel, 3x3 tiles 7C21; params: 2 bytes (address)
-LB38F:	POP HL
-	INC HL
-	LD A,(HL)
-	INC HL
-	PUSH HL
-	LD H,(HL)
-	LD L,A
-	LD DE,L7C21	; Tile block address
-	LD C,$03
-LB39B:	LD B,$03
-LB39D:	LD A,(DE)
-	LD (HL),A
-	INC DE
-	INC HL
-	dec b
-	jp nz,LB39D
-	PUSH DE
-	LD DE,$001B
-	ADD HL,DE
-	POP DE
-	DEC C
-	JP NZ,LB39B
-	JP L734A	; => B702 Proceed to the next room token
-
-LB3AF:	DEFS $01
+;LB3AF:	DEFS $01
 
 ; Routine at B3B0
 LB3B0:	;LD HL,LC681
@@ -3015,6 +3010,12 @@ LB5F5:	LD (HL),A
 	LD (NJAPOS),HL	; set Ninja position in tilemap: Y * 30 + X
 	LD A,$13
 	LD (L7343),A	; set counter = 19
+IF CVERT NE 0		; Cheat code for short route to Helicopter
+	ld a,$D4	; diskette
+	ld (LBD79+1),a	; -> HELD
+	ld hl,L8D5C
+	ld (L791E+6),hl	; Right from room 791E -> room 9F7E
+ENDIF
 
 ; Current Room changed, entering the new Room
 LB66A:	LD A,(L71D4)
@@ -3204,8 +3205,8 @@ LB7CA:	LD HL,$3939	; !!MUT-ARG!! "99" bomb timer initial value
 	LD (LAD57),HL	; set Indicator Time value
 	LD A,$01
 	LD (TIMECN),A
-	LD HL,$EA76 ;TODO
-	LD DE,$001C	; 28
+	;LD HL,$EA76 ;TODO
+	;LD DE,$001C	; 28
 	;LD C,$03
 LB7DD:	;LD B,$04
 LB7DF:	;LD (HL),$D6	; set attribute
@@ -4088,8 +4089,8 @@ LBE1C:	LD HL,TLSCR0+55	; !!MUT-ARG!!
 	LD HL,L7343	; counter address
 	DEC (HL)	; decrease counter
 	JP NZ,LB8D0	; => Update Ninja on tilemap
-	LD (HL),$14	; reset the counter
-	LD HL,TLSCR0+458
+	LD (HL),34	; set the counter for Helicopter moving up
+	LD HL,TLSCR0+458	; = (Tile screen 0) + 15 rows + 8
 	LD DE,TLSCR1+458
 	LD B,$0A	; 10
 LBE3A:	LD (HL),A
@@ -4253,19 +4254,19 @@ LBFD5:	LD B,10		; 10 hundred
 	call ClearScreen
 ;
 	LD HL,LC062	; Messages address
-	LD DE,$C089	; Screen address
+	LD DE,$C9D7	; Screen address
 	LD C,$0E
 	CALL PRSTR	; Print string "DISK RETRIEVED"
-	LD DE,$C828
+	LD DE,$C8A7
 	LD C,$12
 	CALL PRSTR	; Print string "DISK BONUS: $05000"
-	LD DE,$C865
-	LD C,$05
-	CALL PRSTR	; Print string "LEVEL"
-	LD DE,$C062
+	LD DE,$C597
+	LD C,$07
+	CALL PRSTR	; Print string "LEVEL N"
+	LD DE,$C267
 	LD C,$0D
 	CALL PRSTR	; Print string "TOTAL PAY : $"
-	LD DE,$C86D
+	LD DE,$CD97
 	LD HL,LC075	; Messages address
 	LD C,$0D
 	CALL PRSTR	; Print string "BONUS: $05000"
@@ -4276,10 +4277,6 @@ LBFD5:	LD B,10		; 10 hundred
 	LD A,(LE38B)
 	LD B,A
 	CALL LB4DE	; Increase PAY value by B * 100
-	LD DE,$C86B
-	LD HL,LEVED	; Skill level address
-	LD C,$01
-	CALL PRSTR	; Print skill level digit
 	LD A,$14	; "INC D" instruction code
 	LD (LBEDF),A
 LC04A:	LD A,(TIMODE)	; get Time mode
@@ -4294,55 +4291,33 @@ LC056:	LD HL,LBF12	; "ESCAPE" / "MISSION SUCCESSFUL"
 	NOP
 	JP LBEB3	; => Game Over
 
-; ?? Movement handler (helicopter?)
+; Movement handler: helicopter moving up
+; Scrolling block of 17x15 tiles, scroll 4 lines up
 LC094:	LD HL,L7343	; counter address
 	DEC (HL)	; decrease counter
 	JP Z,LBFD5	; zero => Escaped; final messages, then Game Over
-	LD A,$10
+	;LD A,$10
 	;OUT ($FE),A
-	LD HL,$C047 ;TODO
-	LD DE,$C027
-	LD C,$0F
-LC0A7:	PUSH HL
+	LD HL,$C7F3
+	LD DE,$C7F7
+	LD B,15*8
+LC0AB:	push bc
+	PUSH HL
 	PUSH DE
-	LD B,$08
-LC0AB:	PUSH HL
-	PUSH DE
-	PUSH BC
-	ld b,$11
-	call LDIR_B
-	POP BC
+	ld b,17
+_loop:	ld a,(hl)
+	ld (de),a
+	inc h
+	inc d
+	dec b
+	jp nz,_loop
 	POP DE
 	POP HL
-	INC D
-	INC H
+	dec e
+	dec l
+	pop bc
 	dec b
 	jp nz,LC0AB
-	POP DE
-	POP HL
-	PUSH BC
-	LD BC,$0020
-	;RR H
-	;RR H
-	;RR H
-	ADD HL,BC
-	;RL H
-	;RL H
-	;RL H
-	EX DE,HL
-	;RR H
-	;RR H
-	;RR H
-	ADD HL,BC
-	;RL H
-	;RL H
-	;RL H
-	EX DE,HL
-	POP BC
-	DEC C
-	JP NZ,LC0A7
-	XOR A
-	;OUT ($FE),A
 	JP LB8D0	; => Update Ninja on tilemap
 
 ; Ninja on ladder
@@ -5677,7 +5652,7 @@ LF9B3:	DEC C
 	RET
 
 ; Pause, then wait for any key pressed
-LF9B9:	LD DE,$0000
+LF9B9:	LD DE,$4000
 LF9BC:	DEC DE
 	LD B,$05
 LF9BF:	dec b
@@ -5685,21 +5660,9 @@ LF9BF:	dec b
 	LD A,D
 	OR E
 	JP NZ,LF9BC
-LF9C5:	CALL LBBDF	; Read Input
-	LD A,(INPUTM)
-	CP $00
-	LD A,(INPUTB)	; get Input bits
-	JP Z,LF9D7
-	and $10		; BIT 4,A	; check FIRE bit
-	RET NZ
-	JP LF9C5
-LF9D7:	XOR A
-	;LD ($5C08),A	; clear LASTK
-	;RST $38
-	;LD A,($5C08)	; get LASTK
-	CP $00
-	RET NZ
-	JP LF9C5
+;
+	call WaitNoInput
+	jp WaitAnyInput
 
 ; Routine at F9E4
 ;LF9E4:	CALL TLSCR0	; Prepare screen, show anti-piracy message, and wait for any key
@@ -5768,7 +5731,7 @@ Sobot1RoomsSize EQU Sobot1RoomsEnd - Sobot1RoomsBegin
 
 ;----------------------------------------------------------------------------
 
-	;org	$6590 ;TODO
+	;org	$6590
 
 ; Tile screen 0 30x17 tiles, 510 bytes - background
 TLSCR0:	DEFS	510
