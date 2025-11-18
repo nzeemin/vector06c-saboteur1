@@ -135,7 +135,8 @@ LD210:	DEFB $04,$CE,$09,$63,$09,$63,$09,$63,$09,$63
 	DEFB $06,$D2,$02,$CA,$03,$CC,$03,$CC,$03,$CC
 	DEFB $04,$CE,$04,$CE,$04,$CE,$04,$CE,$04,$CE
 
-	DEFS 18 ;FILLER
+; String 18 spaces
+LDEE6:	DEFM "                  "
 
 ; Mirror table
 MIRROR:	DEFB	$00,$80,$40,$C0,$20,$A0,$60,$E0,$10,$90,$50,$D0,$30,$B0,$70,$F0
@@ -596,7 +597,7 @@ LAD59:	DEFM "HELDTIMENEAR"
 LB061:	DEFM "00  $"
 
 ; String 10 spaces
-LB0E8:	DEFM "          "
+;LB0E8:	DEFM "          "
 
 LB0F2:	DEFM "EXCELLENT WORK."
 LB101:	DEFM "YOU ARE ONE OF"
@@ -622,9 +623,6 @@ LC075:	DEFM "BONUS: $05000"
 LC082:	DEFM "LEVEL "
 LEVED:	DEFM "1"	; Current Level digit
 LC087:	DEFM "TOTAL PAY : $"
-
-; String 18 spaces
-LDEE6:	DEFM "                  "
 
 TITLE:	DEFM "SABOTEUR VECTOR-06C"
 LDF27:	DEFM "START MISSION"
@@ -1594,23 +1592,21 @@ LA434:	CALL LA75B	; Set update flags for Guard, 6x7 tiles
 	;OUT ($FE),A
 	LD A,(GARDY)	; get Guard Y
 	ADD A,A		; Guard Y * 2
-	LD (LA45D+2),A
-	INC A		; Guard Y * 2 + 1
-	LD (LA460+2),A
-	LD IX,LA747
-LA45D:	LD L,(IX+$04)
-LA460:	LD H,(IX+$05)
+	ld e,a
+	ld d,0
+	ld hl,LA747
+	add hl,de	; now HL = address on the screen
 	LD A,(GARDX)	; get Guard X
 	LD D,$00
 	LD E,A
 	ADD HL,DE
-	LD DE,$003C
+	LD DE,$003C	; +60 = two rows
 	LD A,(GARDX)	; get Guard X
 	INC A
 	PUSH HL
 	LD HL,(GARDPOS)	; get Current Guard position in tilemap
-	ADD HL,DE
-	EX DE,HL
+	ADD HL,DE	; +60
+	EX DE,HL	; now DE = Guard position + two rows
 	POP HL
 	LD B,A
 	LD A,$2B	; "DEC HL" instruction
@@ -1699,14 +1695,21 @@ LA50B:	ADD HL,DE
 	LD (LA3A7),HL	; set 2nd object position
 	LD A,(GARDX)	; get Guard X
 	ADD A,B
-	LD IX,LA3A6	; 2nd object address
-	LD (IX+$00),$CA
-	LD (IX+$03),C
-	LD (IX+$04),C
-	LD (IX+$06),A
+	ld hl,LA3A6	; 2nd object address
+	ld (hl),$CA	; IX+$00
+	inc hl
+	inc hl
+	inc hl		; IX+$03
+	ld (hl),c
+	inc hl		; IX+$04
+	ld (hl),c
+	inc hl
+	inc hl		; IX+$06
+	ld (hl),a
+	dec hl		; IX+$05
 	LD A,(GARDY)	; get Guard Y
 	ADD A,$02	; Guard Y + 2
-	LD (IX+$05),A
+	ld (hl),a
 	JP LA6FF	; => Draw Guard on tilemap
 
 ; Guard state = $0A ?
@@ -2146,53 +2149,6 @@ LAD1D:
 	LD C,$04
 	CALL PRSTR	; Print string "NEAR"
 	RET
-
-; Game screen frames/indicators RLE encoded sequence
-LAD65:	DEFB $00,$32,$01,$02,$03,$32,$0B,$04
-	DEFB $03,$32,$0B,$04,$03,$32,$0B,$04
-	DEFB $03,$32,$0B,$04,$03,$32,$0B,$04
-	DEFB $03,$32,$0B,$04,$03,$32,$0B,$04
-	DEFB $03,$32,$0B,$04,$03,$32,$0B,$04
-	DEFB $03,$32,$0B,$04,$03,$32,$0B,$04
-	DEFB $03,$32,$0B,$04,$03,$32,$0B,$04
-	DEFB $03,$32,$0B,$04,$03,$32,$0B,$04
-	DEFB $03,$32,$0B,$04,$03,$32,$0B,$04
-	DEFB $05,$18,$06,$07,$23,$06,$07,$18
-	DEFB $06,$07,$18,$06,$08,$03,$18,$0B
-	DEFB $03,$23,$0B,$03,$0E,$0F,$0F,$10
-	DEFB $03,$18,$0B,$04,$03,$18,$0B,$05
-	DEFB $23,$06,$08,$11,$0B,$0B,$12,$03
-	DEFB $18,$0B,$04,$03,$18,$0B,$03,$23
-	DEFB $16,$03,$13,$14,$14,$15,$03,$18
-	DEFB $0B,$04,$03,$18,$09,$03,$23,$16
-	DEFB $03,$18,$09,$03,$18,$09,$04,$0A
-	DEFB $18,$06,$0C,$23,$06,$0C,$18,$06
-	DEFB $0C,$18,$06,$0D,$FF
-
-; Tiles for game screen frames/indicators, 9 bytes each
-LAE02:	DEFB $30,$08,$04,$05,$02,$8D,$70,$1C,$02
-	DEFB $22,$22,$14,$E7,$3C,$24,$44,$00,$02
-	DEFB $00,$10,$21,$22,$A4,$64,$A8,$30,$02
-	DEFB $10,$50,$3C,$08,$08,$6A,$9C,$08,$02
-	DEFB $10,$48,$39,$0E,$08,$78,$17,$10,$02
-	DEFB $0A,$9C,$68,$04,$03,$4C,$38,$14,$02
-	DEFB $00,$11,$22,$62,$BF,$44,$44,$42,$02
-	DEFB $00,$24,$22,$22,$A7,$66,$5A,$89,$02
-	DEFB $10,$78,$27,$20,$C0,$2E,$70,$10,$02
-	DEFB $00,$00,$00,$00,$00,$00,$00,$00,$06
-	DEFB $08,$0E,$08,$36,$43,$02,$04,$18,$02
-	DEFB $00,$00,$00,$00,$00,$00,$00,$00,$0F
-	DEFB $50,$72,$54,$CE,$25,$28,$28,$08,$02
-	DEFB $10,$3C,$92,$61,$A0,$18,$04,$04,$02
-	DEFB $7F,$80,$80,$87,$88,$88,$88,$88,$0F
-	DEFB $FF,$00,$00,$FF,$00,$00,$00,$00,$0F
-	DEFB $FE,$01,$01,$E1,$11,$11,$11,$11,$0F
-	DEFB $88,$88,$88,$88,$88,$88,$88,$88,$0F
-	DEFB $11,$11,$11,$11,$11,$11,$11,$11,$0F
-	DEFB $88,$88,$88,$88,$87,$80,$80,$7F,$0F
-	DEFB $00,$00,$00,$00,$FF,$00,$00,$FF,$0F
-	DEFB $11,$11,$11,$11,$E1,$01,$01,$FE,$0F
-	DEFB $00,$00,$00,$00,$00,$00,$00,$00,$0A
 
 ; Print string with standard font
 ; C  = Length
@@ -3513,26 +3469,25 @@ LBAD5:	CALL LFA28
 	JP NZ,LBAE4	; no =>
 	LD A,(ROOM+1)
 	CP L8DCA SHR 8	; current room address high byte = $8D ?
-	JP Z,LBBA7	; room 8DCA (room with helicopter) =>
+	JP Z,LBBA7	; room 8DCA (room with helicopter) => delete the object
 ;
 LBAE4:	LD A,(IX+$00)	; get object tile
 	CP $D2		; $D2 ? Granade
 	JP Z,LBAF0	; yes =>
 	CP $D3		; $D3 ? Granade
 	JP NZ,LBBA7	; no => delete the object
-; Granade
+; Granade; IX = LA39F
 LBAF0:	LD HL,LBAB2	; Explosion counter address
 	XOR A
 	CP (HL)		; have Explosion already?
 	JP NZ,LBBA7	; yes => delete the object
 	LD (HL),10	; set Explosion counter
-	LD L,(IX+$01)
-	LD H,(IX+$02)	; get object offset
+	ld hl,(LA39F+1)	; get object offset
 	LD DE,TLSCR1-31	; + Tile screen 1 - 31
 	ADD HL,DE
 	LD (LBA2A+1),HL	; set Tile screen 1 address
 	;LD (LBA8E+1),HL	; set screen attributes address
-	LD A,(IX+$05)	; get object Y
+	LD A,(LA39F+5)	; get object Y
 	ADD A,A		; * 2
 	ld l,a
 	ld H,LBAB3 SHR 8	; table of screen addresses for 17 rows
@@ -3544,12 +3499,11 @@ LBAF0:	LD HL,LBAB2	; Explosion counter address
 	LD (LBA57+1),HL
 	LD B,$03
 	LD C,$03
-	EXX
 	LD DE,LABE5	; Explosion image address
-	EXX
+	ld (LBA5A+1),de	; set Explosion image address
 	LD HL,(LBA2A+1)
 	LD DE,$0000
-	LD A,(IX+$05)	; get object Y
+	LD A,(LA39F+5)	; get object Y
 	CP $10
 	JP NZ,LBB59
 	DEC B
@@ -3558,11 +3512,10 @@ LBB59:	CP $00
 	DEC B
 	LD DE,$001E	; 30
 	ADD HL,DE
-	LD DE,$0020
-	EXX
 	LD DE,LABFD
-	EXX
-LBB6A:	LD A,(IX+$06)
+	ld (LBA5A+1),de	; set Explosion image address
+	LD DE,$0020
+LBB6A:	LD A,(LBA5A+6)
 	CP $1D
 	JP NZ,LBB72
 	DEC C
@@ -3571,27 +3524,25 @@ LBB72:	CP $00
 	DEC C
 	INC HL
 	INC DE
-	EXX
-	INC DE
-	EXX
+	push hl
+	ld hl,LBA5A+1
+	inc (hl)	; inc Explosion image address
+	pop hl
 LBB7C:	LD A,B
-	LD (LBA2D+1),A
+	LD (LBA2D+1),A	; set ??
 	LD (LBA5D+1),A
 	LD (LBA91+1),A
 	LD A,C
-	LD (LBA2F+1),A
+	LD (LBA2F+1),A	; set ??
 	LD (LBA5F+1),A
 	LD (LBA96+1),A
-	LD (LBA2A+1),HL
-	LD HL,(LBA57+1)
+	LD (LBA2A+1),HL	; address in Tile screen 1
+	LD HL,(LBA57+1)	; get screen address
 	ADD HL,DE
-	LD (LBA57+1),HL
+	LD (LBA57+1),HL	; set screen address
 	LD HL,(LBA8E+1)
 	ADD HL,DE
 	LD (LBA8E+1),HL
-	EXX
-	LD (LBA5A+1),DE
-	EXX
 ; Delete the object
 LBBA7:	XOR A
 	LD (IX+$00),A
@@ -3656,12 +3607,12 @@ LBAA9:	;LD ($E8F1),A	; !!MUT-ARG!! address in screen attributes
 LBAB2:	DEFB $00	; ??
 
 ; Set "need update" mark for object IX
-LBBAE:	LD L,(IX+$01)
-	LD H,(IX+$02)
-	LD DE,TLSCR1	; Tile screen 1 start address
-	ADD HL,DE
-	LD (HL),$01	; set "need update" mark
-	RET
+;LBBAE:	LD L,(IX+$01)
+;	LD H,(IX+$02)
+; 	LD DE,TLSCR1	; Tile screen 1 start address
+;	ADD HL,DE
+;	LD (HL),$01	; set "need update" mark
+;	RET
 ; Set "need update" mark for object HL
 LBBAE_HL:
 	push hl
@@ -4093,12 +4044,12 @@ LBE71:	LD A,(TIMODE)	; get Time mode
 
 ; BOMB time is out, BOMB explodes
 LBE80:	LD B,$06
-	LD IX,$0000
+	;LD IX,$0000
 LBE86:	LD C,$00
 LBE88:	LD HL,$E821 ;TODO
-	LD A,(IX+$00)
+	;LD A,(IX+$00)
 	;OUT ($FE),A
-	INC IX
+	;INC IX
 	PUSH BC
 	LD C,$11	; 17
 LBE95:	LD B,$1E	; 30
@@ -4115,7 +4066,7 @@ LBE97:	INC (HL)
 	JP NZ,LBE88
 	dec b
 	jp nz,LBE86
-	XOR A
+	;XOR A
 	;OUT ($FE),A
 	PUSH HL
 
@@ -5662,18 +5613,19 @@ LFA31:	CALL NRJDEC	; Decrease Energy by B
 
 ;----------------------------------------------------------------------------
 
-; Items
+; Game frame with indicators + tiles, 157 + 207 = 364 bytes
+INCLUDE "sabot1in.asm"
+
+; Items, 1080 bytes
 INCLUDE "sabot1it.asm"
 
 ; Rooms
-Sobot1RoomsBegin:
+Sabot1RoomsBegin:
 INCLUDE "sabot1rm.asm"
-Sobot1RoomsEnd:
-Sobot1RoomsSize EQU Sobot1RoomsEnd - Sobot1RoomsBegin
+Sabot1RoomsEnd:
+Sabot1RoomsSize EQU Sabot1RoomsEnd - Sabot1RoomsBegin
 
 ;----------------------------------------------------------------------------
-
-	;org	$6590
 
 ; Tile screen 0 30x17 tiles, 510 bytes - background
 TLSCR0:	DEFS	510
@@ -5692,14 +5644,14 @@ TLSCR5:	DEFS	510
 
 ; Front tiles, 124 tiles, 17 bytes each
 INCLUDE "sabot1t1.asm"
-Sabot1Tiles1End:
+Sabot1Tiles1End:	; Gap of $07DD bytes starts here
 
-; Title picture (two ninjas), RLE encoded
-;L62DB:
+; Title picture (two ninjas), RLE encoded, 693 bytes
 INCLUDE "sabot1mp.asm"
-; Sprites
+
+; Sprites, 729 bytes
 INCLUDE "sabot1sp.asm"
-; Font
+; Font, 472 bytes
 INCLUDE "sabot1ft.asm"
 
 	DEFS 119 ;FILLER
@@ -5715,5 +5667,5 @@ INCLUDE "sabot1t2.asm"
 INCLUDE "sabot1t3.asm"
 
 ;----------------------------------------------------------------------------
-Sobot1End:
+Sabot1End:
 ;END
