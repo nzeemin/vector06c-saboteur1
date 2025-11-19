@@ -24,9 +24,9 @@ ROOM:	DEFW L791E	; Current Room address
 NJASPR:	DEFW LA0B5	; Ninja sprite address
 
 ; Current Guard data
-GARDPOS:	DEFW $0101	; Current Guard position in tilemap
-GARDX:	DEFB $11	; Current Guard X position
-GARDY:	DEFB $08	; Current Guard Y position
+GARDPOS:	DEFW 0	; Current Guard position in tilemap
+GARDX:	DEFB 0		; Current Guard X position
+GARDY:	DEFB 0		; Current Guard Y position
 
 ; Current Dog data, 9 bytes
 DOGPOS:	DEFW $018E	; Dog position in tilemap
@@ -42,7 +42,6 @@ L71D4:	DEFB $F3	; ??
 L71D5:	DEFB $01	; ??
 
 NJADIR:	DEFB $00	; Ninja direction: 0 = left, 1 = right
-
 NJAWLK:	DEFB $00	; Ninja walking phase
 
 L7343:	DEFB $07	; Counter used in movement handlers
@@ -57,20 +56,20 @@ NRJLO:	DEFB $01	; Energy lower, running bit
 
 NJAFAL:	DEFB $00	; Ninja falling count, to decrease Energy on hit
 
-NJAY:	DEFB $08	; Ninja Y within the room, 0 at the top
-NJAX:	DEFB $06	; Ninja X within the room
-NJAPOS:	DEFW $00F6	; Ninja position in tilemap: Y * 30 + X
+NJAY:	DEFB 0		; Ninja Y within the room, 0 at the top
+NJAX:	DEFB 0		; Ninja X within the room
+NJAPOS:	DEFW 0		; Ninja position in tilemap: Y * 30 + X
 
 LA39E:	DEFB $00
 
 ; Three objects, 8. bytes each
 ; 1st object - object thrown by Ninja
 LA39F:	DEFB $00	; Thrown object tile
-LA3A0:	DEFB $C4,$00	; Thrown object position
+LA3A0:	DEFW 0		; Thrown object position
 LA3A2:	DEFB $00
 LA3A3:	DEFB $03
-LA3A4:	DEFB $06	; Thrown object Y
-LA3A5:	DEFB $10	; Thrown object X
+LA3A4:	DEFB 0		; Thrown object Y
+LA3A5:	DEFB 0		; Thrown object X
 ; 2nd object - knife thrown by Guard
 LA3A6:	DEFB $00
 LA3A7:	DEFB $45,$01,$05,$05
@@ -3350,30 +3349,41 @@ LBA32:	LD (HL),$01
 ; Process this object
 ; HL = object address in LA39F table
 LB94D:	CALL LBBAE_HL	; set "need update" mark for object
-	;CALL LBBAE	; set "need update" mark for object
-	LD A,$03
-	LD (LB94F+2),A
 	LD B,$02
-	push hl
-	pop ix		; switch to IX for object address
-LB94F:	LD A,(IX+$03)	; !!MUT-ARG!!
+	push hl		; store object address
+	inc hl		; IX+$01
+	ld (LB98D+1),hl
+	ld (LB994+1),hl
+	inc hl
+	inc hl		; IX+$03
+	ld (LB94F+1),hl
+	inc hl
+	inc hl		; IX+$05 = object Y address
+	ld (LB952+1),hl
+	ld (LB99A+1),hl
+	inc hl		; IX+$06 = object X address
+	ld (LB969+1),hl
+	ld (LB9A7+1),hl
+LB94F:	LD A,(LA39F+3)	; !!MUT-ARG!!
+LB952:	ld hl,LA39F+5	; !!MUT-ARG!! object Y address
 	LD DE,$0000	; offset = 0
 	CP $03
 	JP NC,LB95F
 	LD DE,$FFE2	; offset = -30
-	DEC (IX+$05)	; decrement object Y
+	dec (hl)	; decrement object Y (IX+$05)
 LB95F:	CP $06
 	JP C,LB969
 	LD DE,$001E	; offset = +30
-	INC (IX+$05)	; increment object Y
-LB969:	CP $01
+	inc (hl)	; increment object Y (IX+$05)
+LB969:	ld hl,LA39F+6	; !!MUT-ARG!! object X address
+	CP $01
 	JP Z,LB98D
 	CP $04
 	JP Z,LB98D
 	CP $07
 	JP Z,LB98D
 	DEC DE
-	DEC (IX+$06)	; decrement object X
+	dec (hl)	; decrement object X (IX+$06)
 	CP $03
 	JP Z,LB98D
 	CP $00
@@ -3382,37 +3392,35 @@ LB969:	CP $01
 	JP Z,LB98D
 	INC DE
 	INC DE		; offset += 2
-	INC (IX+$06)	; increment object X
-	INC (IX+$06)
-LB98D:	LD L,(IX+$01)
-	LD H,(IX+$02)	; get object position
+	inc (hl)	; increment object X (IX+$06)
+	inc (hl)
+LB98D:	ld hl,(LA39F+1)	; !!MUT-ARG!! get object position (IX+$01)
 	ADD HL,DE
-	LD (IX+$01),L
-	LD (IX+$02),H	; update object position
-	LD A,(IX+$05)	; get object Y
-	CP $FF
+LB994:	ld (LA39F+1),hl	; !!MUT-ARG!! update object position (IX+$01)
+LB99A:	LD A,(LA39F+5)	; !!MUT-ARG!! get object Y (IX+$05)
+	CP $FF		; Y = -1 ?
 	JP Z,LBBA7
-	CP $11
+	CP $11		; Y = 17 ?
 	JP Z,LBBA7
-	LD A,(IX+$06)	; get object X
+LB9A7:	LD A,(LA39F+6)	; !!MUT-ARG!! get object X (IX+$06)
 	CP $1E		; X = 30 ?
 	JP Z,LBBA7
 	CP $FF		; X = -1 ?
 	JP Z,LBBA7
-	PUSH HL
+	PUSH HL		; save object position
 	LD DE,TLSCR0	; Tile screen 0 start address
 	ADD HL,DE
 	LD A,$64
-	CP (HL)
+	CP (HL)		; compare background tile to $64
 	POP HL
 	JP C,LBAD5
 	PUSH HL
 	LD DE,TLSCR3	; Tile screen 3 start address
 	ADD HL,DE	; now HL = address in Tile screen 3
-	LD A,(HL)
+	LD A,(HL)	; get tile from Dog screen
 	POP HL
-	INC A
-	jp nz,LB9CA	; => Dog hit by the object
+	INC A		; = $FF ?
+	jp nz,LB9CA	; no => Dog hit by the object
 LB9DA:	PUSH HL
 	LD DE,TLSCR4	; Tile screen 4 start address
 	ADD HL,DE
@@ -3421,8 +3429,9 @@ LB9DA:	PUSH HL
 	INC A		; $FF?
 	jp nz,LB9E4	; no => Guard hit by the object
 LB9F9:	PUSH HL
-	LD HL,LB94F+2
-	INC (HL)
+	ld hl,(LB94F+1)
+	inc hl
+	ld (LB94F+1),hl
 	POP HL
 	DEC B
 	JP NZ,LB94F
@@ -3433,8 +3442,7 @@ LB9F9:	PUSH HL
 	CP $C8
 	jp c,LBA0C	; => Ninja hit by the object
 LBA14:	ex de,hl
-	push ix
-	pop hl		; switch back to HL for object address
+	pop hl		; restore object address
 	ld a,(hl)
 	ld (de),a	; put object tile on Tile screen 2
 	XOR $01		; flip object tile
@@ -3463,20 +3471,23 @@ LBA0C:	LD B,20		; Ninja hit by the object
 	;JP LBAD5	; => delete the object
 ;
 ; This object should be deleted, Granade explode
-; IX = object address in LA39F table
-LBAD5:	CALL LFA28
+; HL = object address in LA39F table
+LBAD5:	push hl
+	CALL LFA28
+	pop hl		; restore object address
+	ld (LBBA8+1),hl	; save object address for object deletion
+	LD A,(ROOM)	; get current room address low byte
 	CP L8DCA AND $FF	; current room address low byte = $CA ?
 	JP NZ,LBAE4	; no =>
 	LD A,(ROOM+1)
 	CP L8DCA SHR 8	; current room address high byte = $8D ?
 	JP Z,LBBA7	; room 8DCA (room with helicopter) => delete the object
 ;
-LBAE4:	LD A,(IX+$00)	; get object tile
-	CP $D2		; $D2 ? Granade
-	JP Z,LBAF0	; yes =>
-	CP $D3		; $D3 ? Granade
+LBAE4:	ld a,(hl)	; get object tile
+	and $FE
+	CP $D2		; $D2/$D3 ? Granade
 	JP NZ,LBBA7	; no => delete the object
-; Granade; IX = LA39F
+; Granade; HL = object address = LA39F
 LBAF0:	LD HL,LBAB2	; Explosion counter address
 	XOR A
 	CP (HL)		; have Explosion already?
@@ -3499,8 +3510,8 @@ LBAF0:	LD HL,LBAB2	; Explosion counter address
 	LD (LBA57+1),HL
 	LD B,$03
 	LD C,$03
-	LD DE,LABE5	; Explosion image address
-	ld (LBA5A+1),de	; set Explosion image address
+	ld hl,LABE5	; Explosion image address
+	ld (LBA5A+1),hl	; set Explosion image address
 	LD HL,(LBA2A+1)
 	LD DE,$0000
 	LD A,(LA39F+5)	; get object Y
@@ -3512,8 +3523,10 @@ LBB59:	CP $00
 	DEC B
 	LD DE,$001E	; 30
 	ADD HL,DE
-	LD DE,LABFD
-	ld (LBA5A+1),de	; set Explosion image address
+	ex de,hl
+	ld hl,LABFD
+	ld (LBA5A+1),hl	; set Explosion image address
+	ex de,hl
 	LD DE,$0020
 LBB6A:	LD A,(LBA5A+6)
 	CP $1D
@@ -3545,7 +3558,7 @@ LBB7C:	LD A,B
 	LD (LBA8E+1),HL
 ; Delete the object
 LBBA7:	XOR A
-	LD (IX+$00),A
+LBBA8:	ld (LA39F),a	; !!MUT-ARG!! set object empty
 	ret
 
 ; Draw Explosion image and make some noise
@@ -3968,6 +3981,7 @@ LBDDD:	LD A,(INPUTB)	; get Input bits
 	JP Z,LBFBA
 	ld de,TLSCR0+30
 	ld hl,(NJAPOS)	; get Ninja position in tilemap
+	ex de,hl	; now DE = Ninja position
 	ADD HL,DE
 	LD A,$DA
 	CP (HL)
@@ -5602,7 +5616,6 @@ LFA16:	DEC A
 ; Routine at FA28
 LFA28:	LD B,$01
 	CALL LF9A1
-	LD A,(ROOM)	; get current room address low byte
 	RET
 
 ; Decrease Energy by B + Sound
@@ -5624,21 +5637,6 @@ Sabot1RoomsBegin:
 INCLUDE "sabot1rm.asm"
 Sabot1RoomsEnd:
 Sabot1RoomsSize EQU Sabot1RoomsEnd - Sabot1RoomsBegin
-
-;----------------------------------------------------------------------------
-
-; Tile screen 0 30x17 tiles, 510 bytes - background
-TLSCR0:	DEFS	510
-; Tile screen 1 30x17 tiles, 510 bytes - update flags
-TLSCR1:	DEFS	510
-; Tile screen 2 30x17 tiles, 510 bytes - Ninja screen
-TLSCR2:	DEFS	510
-; Tile screen 3 30x17 tiles, 510 bytes - Dog screen
-TLSCR3:	DEFS	510
-; Tile screen 4 30x17 tiles, 510 bytes - Guard screen
-TLSCR4:	DEFS	510
-; Tile screen 5 30x17 tiles, 510 bytes - front
-TLSCR5:	DEFS	510
 
 ;----------------------------------------------------------------------------
 
@@ -5665,6 +5663,21 @@ INCLUDE "sabot1t1b.asm"
 INCLUDE "sabot1t2.asm"
 	DEFS 295
 INCLUDE "sabot1t3.asm"
+
+;----------------------------------------------------------------------------
+
+; Tile screen 0 30x17 tiles, 510 bytes - background
+TLSCR0:	DEFS	510
+; Tile screen 1 30x17 tiles, 510 bytes - update flags
+TLSCR1:	DEFS	510
+; Tile screen 2 30x17 tiles, 510 bytes - Ninja screen
+TLSCR2:	DEFS	510
+; Tile screen 3 30x17 tiles, 510 bytes - Dog screen
+TLSCR3:	DEFS	510
+; Tile screen 4 30x17 tiles, 510 bytes - Guard screen
+TLSCR4:	DEFS	510
+; Tile screen 5 30x17 tiles, 510 bytes - front
+TLSCR5:	DEFS	510
 
 ;----------------------------------------------------------------------------
 Sabot1End:

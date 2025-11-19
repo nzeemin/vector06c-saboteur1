@@ -1,1 +1,1 @@
-start x-emu80qt\emu80qt.exe -vz sabot1.rom
+start x-emu80qt\emu80qt.exe -v sabot1.rom
