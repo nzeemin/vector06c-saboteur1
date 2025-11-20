@@ -3,6 +3,10 @@ Porting **Saboteur** game to soviet computer [Vector-06c](https://en.wikipedia.o
 
 Porting status: Work In Progress.
 
+Screenshot of the ported version:
+
+![](screenshot/gameplay.png)
+
 
 ## Tools for the tools folder
 

@@ -101,10 +101,10 @@ LB850:	DEFB $C8	; HELD tile
 ;----------------------------------------------------------------------------
 
 ; Table of four addresses of Ninja/Guard walking sprites
-L733B:	DEFW	LD3DE	; Sprite Ninja/Guard walking 1
-	DEFW	LD408	; Sprite Ninja/Guard walking 2
-	DEFW	LD432	; Sprite Ninja/Guard walking 3
-	DEFW	LD45C	; Sprite Ninja/Guard walking 4
+L733B:	DEFW LD3DE	; Sprite Ninja/Guard walking 1
+	DEFW LD408	; Sprite Ninja/Guard walking 2
+	DEFW LD432	; Sprite Ninja/Guard walking 3
+	DEFW LD45C	; Sprite Ninja/Guard walking 4
 
 ; Table of items: addresses for NEAR/HELD items
 LB5B0:	DEFW LA7AD	; #0 Nothing
@@ -624,6 +624,7 @@ LEVED:	DEFM "1"	; Current Level digit
 LC087:	DEFM "TOTAL PAY : $"
 
 TITLE:	DEFM "SABOTEUR VECTOR-06C"
+	DEFM "RETROGRAD 2025"
 LDF27:	DEFM "START MISSION"
 
 LE1ED:	DEFM "ENTER SKILL LEVEL"
@@ -3350,7 +3351,8 @@ LBA32:	LD (HL),$01
 ; HL = object address in LA39F table
 LB94D:	CALL LBBAE_HL	; set "need update" mark for object
 	LD B,$02
-	push hl		; store object address
+	ld (LBA15+1),hl	; store object address
+	ld (LBAD8+1),hl	; store object address for LBAD5
 	inc hl		; IX+$01
 	ld (LB98D+1),hl
 	ld (LB994+1),hl
@@ -3442,7 +3444,7 @@ LB9F9:	PUSH HL
 	CP $C8
 	jp c,LBA0C	; => Ninja hit by the object
 LBA14:	ex de,hl
-	pop hl		; restore object address
+LBA15:	ld hl,LA39F	; !!MUT-ARG!! restore object address
 	ld a,(hl)
 	ld (de),a	; put object tile on Tile screen 2
 	XOR $01		; flip object tile
@@ -3472,9 +3474,8 @@ LBA0C:	LD B,20		; Ninja hit by the object
 ;
 ; This object should be deleted, Granade explode
 ; HL = object address in LA39F table
-LBAD5:	push hl
-	CALL LFA28
-	pop hl		; restore object address
+LBAD5:	;CALL LFA28	; Sound
+LBAD8:	ld hl,LA39F	; !!MUT-ARG!! restore object address
 	ld (LBBA8+1),hl	; save object address for object deletion
 	LD A,(ROOM)	; get current room address low byte
 	CP L8DCA AND $FF	; current room address low byte = $CA ?
@@ -5102,6 +5103,9 @@ LDF60:	ei
 	LD HL,TITLE	; Menu messages address
 	LD DE,$CBFF
 	LD C,19
+	CALL PRSTR	; Print title string
+	LD DE,$CDEF
+	LD C,14
 	CALL PRSTR	; Print title string
 	LD HL,LC082
 	LD C,7

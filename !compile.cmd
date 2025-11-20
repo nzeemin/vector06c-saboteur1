@@ -18,7 +18,7 @@ tools\pasmo --equ LZSIZE1=20000 sabot0.asm sabot0.bin sabot0.txt sabot0.inc
 dir /-c sabot0.bin|findstr /R /C:"sabot0.bin"
 
 @echo on
-tools\pasmo --alocal sabot1.asm sabot1.bin sabot1.txt
+tools\pasmo --alocal -8 sabot1.asm sabot1.bin sabot1.txt
 @if errorlevel 1 goto Failed
 @echo off
 
