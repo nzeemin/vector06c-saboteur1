@@ -14,6 +14,7 @@
 CHELTH EQU 1	; Cheat code for no damage
 CVERT  EQU 0	; Cheat code for short route to Helicopter
 ;CBOMB EQU 0	; Cheat code for carrying BOMB
+CSHORT EQU 1	; Cheat code for small map used to test main features
 
 ;----------------------------------------------------------------------------
 ; Variables
@@ -5638,7 +5639,12 @@ INCLUDE "sabot1it.asm"
 
 ; Rooms
 Sabot1RoomsBegin:
+IF CSHORT NE 0		; Cheat code for small map
+INCLUDE "sabot1rms.asm"
+ELSE
 INCLUDE "sabot1rm.asm"
+ENDIF
+INCLUDE "sabot1rb.asm"
 Sabot1RoomsEnd:
 Sabot1RoomsSize EQU Sabot1RoomsEnd - Sabot1RoomsBegin
 

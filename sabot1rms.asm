@@ -53,7 +53,7 @@ ENDM
 L791E:	DEFW	LB446	; Room procedure
 	DEFW	LC64C	; Initialization
 	DEFW	0	; Room to Left
-	DEFW	L79C6	; Room to Right
+	DEFW	L8D18	; Room to Right - SHORTCUT
 	DEFW	0	; Room to Up
 	DEFW	0	; Room to Down
 	DEFRT04 $0D			; Fill entire screen with 0D
@@ -1302,19 +1302,19 @@ L8CC8:	DEFW	LB41F	; Room procedure
 ; Room 8D18
 L8D18:	DEFW	LB41F	; Room procedure
 	DEFW	LB422	; Initialization
-	DEFW	L8C5A	; Room to Left
-	DEFW	L8EE1	; Room to Right
+	DEFW	0	; Room to Left - SHORTCUT
+	DEFW	L9DF5	; Room to Right - SHORTCUT
 	DEFW	L8D5C	; Room to Up
 	DEFW	L8CC8	; Room to Down
 	DEFRT01 3, $3A, TLSCR0+426	; Fill vert 3 tiles with $3A at 673A
 	DEFRT01 3, $3A, TLSCR0+434	; Fill vert 3 tiles with $3A at 6742
 	DEFRT01 3, $3A, TLSCR0+446	; Fill vert 3 tiles with $3A at 674E
 	DEFRT01 17, $3A, TLSCR0+19	; Fill vert 17 tiles with $3A at 65A3
-	DEFRT03 $FF, 10,4, TLSCR0+0	; Rectangle 10x4 tiles with FF at 6590
+	DEFRT03 $FF, 2,17, TLSCR0+0	; Rectangle 10x4 tiles with FF at 6590 - SHORTCUT
 	DEFRT0C L7348, 2, 13, TLSCR0+10	; Block 2 tiles from 7348 to 659A copy 13 times
-L8D45:	DEFRT02 18, $FA, TLSCR0+390	; Fill horz 18 tiles with FA at 6716
-	DEFRT02 6, $FA, TLSCR0+414	; Fill horz 6 tiles with FA at 672E
-	DEFRT02 5, $63, TLSCR0+228	; Fill horz 5 tiles with 63 at 6674
+L8D45:	DEFRT02 30, $FA, TLSCR0+390	; Fill horz 18 tiles with FA at 6716 - SHORTCUT
+	;DEFRT02 6, $FA, TLSCR0+414	; Fill horz 6 tiles with FA at 672E - SHORTCUT
+	DEFRT02 5, $63, TLSCR0+228-30	; Fill horz 5 tiles with 63 at 6674 - SHORTCUT
 	DEFRT05 2,4, L71BB, TLSCR5+283	; Block 2x4 tiles from 71BB to 70A1
 	DEFB	$FF	; End of sequence
 
@@ -2290,13 +2290,15 @@ L9BE7:	DEFW	LB483	; Room procedure
 ; Room 9DF5
 L9DF5:	DEFW	L7918	; Room procedure
 	DEFW	LA138	; Initialization
-	DEFW	L9BE7	; Room to Left
-	DEFW	0	; Room to Right
+	DEFW	L8D18	; Room to Left - SHORTCUT
+	DEFW	LA022	; Room to Right - SHORTCUT
 	DEFW	L9E22	; Room to Up
 	DEFW	0	; Room to Down
 	DEFRT02 7, $FF, TLSCR0+0	; Fill horz 7 tiles with FF at 6590
-	DEFRT03 $FF, 2,12, TLSCR0+28	; Rectangle 2x12 tiles with FF at 65AC
-	DEFRT02 122, $FF, TLSCR0+388	; Fill horz 122 tiles with FF at 6714
+	DEFRT03 $FF, 2,4, TLSCR0+28	; Rectangle 2x12 tiles with FF at 65AC - SHORTCUT
+	DEFRT02 120, $FF, TLSCR0+390	; Fill horz 122 tiles with FF at 6714 - SHORTCUT
+	DEFRT03 $00, 2,2, TLSCR0+418	; Rectangle 2x12 tiles with FF at 65AC - SHORTCUT
+	DEFRT09 $00, 2, TLSCR0+417	; Triangle with 00, count=3 at 66F0 - SHORTCUT
 	DEFRT0C L7348, 2, 13, TLSCR0+20	; Block 2 tiles from 7348 to 65A4 copy 13 times
 	DEFRT0E $2A, TLSCR5+33	; Put tile 2A at 6FA7
 	DEFRT01 11, $2B, TLSCR5+63	; Fill vert 11 tiles with $2B at 6FC5
@@ -2434,7 +2436,7 @@ L9F7E:	DEFW	L7918	; Room procedure
 ; Room A022
 LA022:	DEFW	LB41F	; Room procedure
 	DEFW	LB422	; Initialization
-	DEFW	L9F7E	; Room to Left
+	DEFW	L9DF5	; Room to Left - SHORTCUT
 	DEFW	0	; Room to Right
 	DEFW	0	; Room to Up
 	DEFW	0	; Room to Down
