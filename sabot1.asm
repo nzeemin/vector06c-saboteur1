@@ -632,11 +632,38 @@ LC087:	DEFM "TOTAL PAY : $"
 TITLE:	DEFM "SABOTEUR VECTOR-06C"
 	DEFM "RETROGRAD 2025"
 LDF27:	DEFM "START MISSION"
+	DEFM "INFORMATION"
 
-;LE1ED:	DEFM "ENTER SKILL LEVEL"
-;LE1FE:	DEFM "1 TO 9"
 LE204:	DEFM "YOUR MISSION"
 LE210:	DEFM "WILL BE"
+
+SINFO:	DEFB 18
+	DEFM "ORIGINAL GAME 1985"
+	DEFB 14
+	DEFM "CLIVE TOWNSEND"
+	DEFB $00
+	DEFB 15
+	DEFM "VECTOR-06C PORT"
+	DEFB 12
+	DEFM "2025 NZEEMIN"
+	DEFB $00
+	DEFB $00
+	DEFB 9
+	DEFM "CONTROLS:"
+	DEFB 12
+	DEFM "KEYBOARD AND"
+	DEFB 10
+	DEFM "JOYSTICK-P"
+	DEFB $00
+	DEFB 9
+	DEFM "KEYBOARD:"
+	DEFB 13
+	DEFM "CURSOR ARROWS"
+	DEFB 18
+	DEFM "FIRE: TAB PS ZB VK"
+	DEFB 16
+	DEFM "SUICIDE: US + SS"
+	DEFB $FF
 
 ;----------------------------------------------------------------------------
 
@@ -2928,9 +2955,12 @@ LB66A:	LD A,(L71D4)
 LB66D:	LD ($0000),A	; !!MUT-ARG!! address for current Dog flag
 	LD HL,DOGPOS
 LB673:	LD DE,$0000	; !!MUT-ARG!! current Dog data address
+	ld a,e
+	or d		; DE = $0000 ?
+	jp z,LB67B	; yes => don't copy current Dog's data
 	ld b,$09
 	call LDIR_B
-	LD HL,LB263	; For first drawing entering the room, skip Dog and Guard tiles drawing
+LB67B:	LD HL,LB263	; For first drawing entering the room, skip Dog and Guard tiles drawing
 	LD (LB1F9+1),HL
 	CALL LDE68	; Find record for the current room in DE84 table
 	CP $00
@@ -2941,6 +2971,9 @@ LB68B:	LD A,(HL)	; get flag
 	LD (LB66D+1),HL
 	LD HL,GARDPOS
 LB695:	LD DE,$0000	; !!MUT-ARG!! current Guard data address
+	ld a,e
+	or d		; DE = $0000 ?
+	jp z,LB6A6	; yes => don't copy current Guard's data
 	ld b,$04
 	call LDIR_B
 	LD A,(GARDST)	; get Guard state
@@ -2948,10 +2981,11 @@ LB695:	LD DE,$0000	; !!MUT-ARG!! current Guard data address
 	INC DE
 	LD A,(GARDDIR)	; get Guard direction
 	LD (DE),A
-	LD HL,$0000
-	LD (LB673+1),HL	; set current Dog data address = no dog
-	LD (LB695+1),HL	; set current Guard data address = no guard
-	XOR A
+LB6A6:	xor a
+	ld l,a
+	ld h,a
+	LD (LB673+1),HL	; set current Dog data address = $0000 no dog
+	LD (LB695+1),HL	; set current Guard data address = $0000 no guard
 	LD (LBAB2),A
 	LD HL,LA39F
 	LD B,$03
@@ -3694,7 +3728,7 @@ _ReadInp_3:
 	POP HL
 	RET
 
-; Mapping: Arrows - movement, US/SS/RusLat/ZB - fire, Tab - hyper
+; Mapping: Arrows - movement, ZB/VK/PS/Tab - fire
 ReadInput_map:                        ; 7   6   5   4   3   2   1   0
   ;DW KeyLineEx
   ;DB $01,$01,$01,$00,$00,$00,$00,$00  ; R/L SS  US  --  --  --  --  --
@@ -5042,17 +5076,17 @@ LDE7F:	INC HL
 	RET
 
 ; Clear strings on the screen
-; Clears 10 strings, 18 characters each; used to clear table of scores, menu etc.
-LDEC1:	LD B,$0A
-	LD DE,$CCEF
+; Clears 16 strings, 18 characters each; used to clear table of scores, menu etc.
+LDEC1:	LD B,18
+	LD DE,$CDEF
 LDEC6:	PUSH DE
 	PUSH BC
-	LD C,$12
+	LD C,18
 	LD HL,LDEE6	; String 18 spaces
 	CALL PRSTR	; Print string
 	POP BC
 	POP DE
-	LD HL,$FFF0
+	LD HL,$FFF8
 	ADD HL,DE
 	EX DE,HL
 	dec b
@@ -5093,12 +5127,16 @@ LDF60:	ei
 	CALL PRSTR	; Print title string
 	LD HL,LC082
 	LD C,7
-	LD DE,$CDAF
+	LD DE,$CDB7
 	CALL PRSTR	; Print string "LEVEL N"
 	LD HL,LDF27
 	LD C,13
-	LD DE,$CD8F
+	LD DE,$CD97
 	CALL PRSTR	; Print string "START MISSION"
+	LD C,11
+	LD DE,$CD77
+	CALL PRSTR	; Print string "INFORMATION"
+;
 	CALL LE04D	; Clear key buffer playing melody
 	CALL LDFDB	; Highlight Menu item
 	LD DE,$00D4
@@ -5109,28 +5147,13 @@ LDF97:	PUSH DE
 	call WaitNoInput
 	ld a,(MenuItem)
 	or a
-	jp nz, MENUL
-; Menu item "START MISSION"
-MENUS:	ld hl,$ED86
-	ld (LDFDB+1),hl
-	call LDFDB	; Highlight Menu item
-_00:	call LBBDF	; Read input
-	rrca		; Right - do nothing
-	rrca		; Left - do nothing
-	rrca		; Down - do nothing
-	rrca		; Up ?
-	jp nc,_10	; no =>
-	ld a,1
-	ld (MenuItem),a
-	call LDFE6	; Unhighlight Menu item
-	jp MENUL
-_10:	rrca		; Fire ?
-	jp nc,_00	; => Start Mission
-	call WaitNoInput
-	jp LE2A7
+	jp z, MENUL
+	dec a
+	jp z, MENUS
+	jp MENUI
 ; Menu item "LEVEL"
 MENUL:
-	ld hl,$EDA6
+	ld hl,$CDAE
 	ld (LDFDB+1),hl
 	call LDFDB	; Highlight Menu item
 _00:	call LBBDF	; Read input
@@ -5152,15 +5175,80 @@ _10:	rrca		; Left?
 	jp LDF60
 _20:	rrca		; Down?
 	jp nc,_30	; no =>
-	xor a
-	ld (MenuItem),a
 	call LDFE6	; Unhighlight Menu item
+	ld a,1
+	ld (MenuItem),a
+	call WaitNoInput
 	jp MENUS
 _30:	rrca		; Up - do nothing
 	rrca
 	;TODO: check Fire
 	jp _00
-MenuItem: DEFB 0	; 0 = START, 1 = LEVEL
+; Menu item "START MISSION"
+MENUS:	ld hl,$CD8E
+	ld (LDFDB+1),hl
+	call LDFDB	; Highlight Menu item
+_00:	call LBBDF	; Read input
+	rrca		; Right - do nothing
+	rrca		; Left - do nothing
+	rrca		; Down ?
+	jp nc,_10	; no =>
+	call LDFE6	; Unhighlight Menu item
+	ld a,2
+	ld (MenuItem),a
+	jp MENUI
+_10:	rrca		; Up ?
+	jp nc,_20	; no =>
+	call LDFE6	; Unhighlight Menu item
+	xor a
+	ld (MenuItem),a
+	jp MENUL
+_20:	rrca		; Fire ?
+	jp nc,_00	; =>
+	call WaitNoInput
+	jp LE2A7	; => Start Mission
+; Menu item "INFORMATION"
+MENUI:
+	ld hl,$CD6E
+	ld (LDFDB+1),hl
+	call LDFDB	; Highlight Menu item
+_00:	call LBBDF	; Read input
+	rrca		; Right - do nothing
+	rrca		; Left - do nothing
+	rrca		; Down - do nothing
+	rrca		; Up ?
+	jp nc,_10	; no =>
+	call LDFE6	; Unhighlight Menu item
+	ld a,1
+	ld (MenuItem),a
+	call WaitNoInput
+	jp MENUS
+_10:	rrca		; Fire ?
+	jp nc,_00	; =>
+	call LDFE6	; Unhighlight Menu item
+; Show Information page
+	CALL LDEC1	; Clear strings on the screen
+	LD HL,SINFO
+	LD DE,$CDDF
+_50:	ld a,(hl)
+	inc hl
+	or a
+	jp z,_60	; => next line
+	cp $FF
+	jp z,_70	; => end of text
+	ld c,a		; string length
+	push de
+	call PRSTR	; Print string
+	pop de
+_60:	ld a,e
+	sub 8		; 8 lines lower
+	ld e,a
+	jp _50
+_70:	call WaitNoInput
+	call WaitAnyInput
+	jp LDF60
+
+MenuItem: DEFB 1	; 0 = LEVEL, 1 = START, 2 = INFO
 
 LDFA8:
 ; Entry point
@@ -5179,7 +5267,7 @@ LDFD4:	XOR A
 	RET
 
 ; Highlight Menu item
-LDFDB:	LD HL,$ED86
+LDFDB:	LD HL,$CD8E
 	LD B,$0D
 LDFE0:	LD (HL),$55
 	inc h
@@ -5246,42 +5334,7 @@ LE04D:	CALL LE440	; Play next note in melody
 ; Start Mission
 LE2A7:	CALL LDFE6	; Unhighlight Menu item
 	CALL LDEC1	; Clear strings on the screen
-	;LD HL,LE1ED	; "ENTER SKILL LEVEL"
-	;LD DE,$C06D
-	;LD C,$11
-	;CALL PRSTR	; Print string "ENTER SKILL LEVEL"
-	;LD DE,$C092
-	;LD C,$06
-	;CALL PRSTR	; Print string "1 TO 9"
-	;CALL LE04D	; Clear key buffer playing melody
-	;LD HL,$58F3
-	;LD A,$B1
-	;LD (HL),A
-	;INC HL
-	;LD (HL),A
-	;INC HL
-	;LD (HL),A
-LE2CD:	;CALL LE440	; Play next note in melody
-	;CALL LDFD4	; Clear LASTK and do RST $38 once
-	;;LD A,($5C08)	; get LASTK
-	;CP $31
-	;JP C,LE2CD
-	;CP $3A
-	;JP NC,LE2CD
-	;LD HL,LEVED	; Skill level address
-	;LD (HL),A
-	;LD DE,$C0F4
-	;LD C,$01
-	;CALL PRSTR	; Print string
-	;CALL LE04D	; Clear key buffer playing melody
-	;LD HL,$58F3
-	;LD A,$0E
-	;LD (HL),A
-	;INC HL
-	;LD (HL),A
-	;INC HL
-	;LD (HL),A
-	;CALL LDEC1	; Clear strings on the screen
+;NOTE: "ENTER SKILL LEVEL" - moved to Menu
 	LD HL,LE204	; "YOUR MISSION"
 	LD DE,$CECF
 	LD C,$0C
@@ -5352,17 +5405,19 @@ LE343:	ex de,hl
 	call LDIR_B	; Copy last 4 bytes: BOMB placement
 	LD DE,$0019
 ;
-	call WaitAnyInput
-LE374:	;PUSH DE
-	;CALL LE440	; Play next note in melody
-	;POP DE
-	;LD A,($5C08)	; get LASTK
-	;CP $00
-	;RET NZ
-	;DEC DE
-	;LD A,D
-	;OR E
-	;JP NZ,LE374
+; Wait for any key pressed, or time passed
+	ld bc,$1800
+_10:	push bc
+	call LBBDF	; Read input
+	pop bc
+	and $1F		; mask for 5 bits
+	jp nz,LE374
+	dec c
+	jp nz,_10
+	dec b
+	jp nz,_10
+;
+LE374:
 	RET
 
 ; Play next note in melody
