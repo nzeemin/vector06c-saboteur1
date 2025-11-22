@@ -1,6 +1,6 @@
 ;----------------------------------------------------------------------------
 
-	PUBLIC KeyLineEx, KeyLine0, KeyLine7
+	PUBLIC KeyLineEx, KeyLine0
 	PUBLIC JoystickP	; F200DULR
 	PUBLIC BorderColor
 	PUBLIC dzx0, SABOTCOD0_END

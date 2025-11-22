@@ -6,7 +6,6 @@
 
 	org	SABOTCOD0_END
 
-	;JP	LBC0D
 	JP	LF9E7
 
 ;------------------------------------------------------------------------------
@@ -14,7 +13,7 @@
 CHELTH EQU 1	; Cheat code for no damage
 CVERT  EQU 0	; Cheat code for short route to Helicopter
 ;CBOMB EQU 0	; Cheat code for carrying BOMB
-CSHORT EQU 1	; Cheat code for small map used to test main features
+CSHORT EQU 0	; Cheat code for small map used to test main features
 
 ;----------------------------------------------------------------------------
 ; Variables
@@ -99,6 +98,9 @@ LB84D:	DEFW $0000	; Object procedure address
 LB84F:	DEFB $00	; NEAR item
 LB850:	DEFB $C8	; HELD tile
 
+LE388:	DEFM " 10"	; level bonus string
+LE38B:	DEFB $0A	; level bonus value
+
 ;----------------------------------------------------------------------------
 
 ; Table of four addresses of Ninja/Guard walking sprites
@@ -135,9 +137,7 @@ LD210:	DEFB $04,$CE,$09,$63,$09,$63,$09,$63,$09,$63
 	DEFB $06,$D2,$02,$CA,$03,$CC,$03,$CC,$03,$CC
 	DEFB $04,$CE,$04,$CE,$04,$CE,$04,$CE,$04,$CE
 
-; String 18 spaces
-LDEE6:	DEFM "                  "
-
+	DEFS 14		; filler
 ; Mirror table
 MIRROR:	DEFB	$00,$80,$40,$C0,$20,$A0,$60,$E0,$10,$90,$50,$D0,$30,$B0,$70,$F0
 	DEFB	$08,$88,$48,$C8,$28,$A8,$68,$E8,$18,$98,$58,$D8,$38,$B8,$78,$F8
@@ -511,6 +511,8 @@ LE217:	DEFM "EXTREMELY EASY"
 ; +$09: count for wall in room 7F48
 ; +$0A: count for wall in room 8D5C
 ; +$0B: count for wall in room 8F20: $01 = no wall, $09 = put wall
+; +$0C: 3-char string for level bonus
+; +$0F: level bonus value
 ; +$10/$11: room for BOMB placement
 ; +$12/$13: address in Tile screen 0 for BOMB placement
 ; Level 1 "EXTREMELY EASY"
@@ -596,6 +598,9 @@ LAD59:	DEFM "HELDTIMENEAR"
 
 LB061:	DEFM "00  $"
 
+; String 18 spaces
+LDEE6:	DEFM "                  "
+
 ; String 10 spaces
 ;LB0E8:	DEFM "          "
 
@@ -628,8 +633,8 @@ TITLE:	DEFM "SABOTEUR VECTOR-06C"
 	DEFM "RETROGRAD 2025"
 LDF27:	DEFM "START MISSION"
 
-LE1ED:	DEFM "ENTER SKILL LEVEL"
-LE1FE:	DEFM "1 TO 9"
+;LE1ED:	DEFM "ENTER SKILL LEVEL"
+;LE1FE:	DEFM "1 TO 9"
 LE204:	DEFM "YOUR MISSION"
 LE210:	DEFM "WILL BE"
 
@@ -1031,22 +1036,6 @@ _74E7:	LD A,(DE)
 	dec l		; line down
 	DEC C
 	JP NZ,_74E4
-L74F3:	;LD HL,$EA61
-	;LD C,$03
-L74F8:	;LD B,$04
-L74FA:	;LD A,(DE)
-	;LD (HL),A	; put attribute
-	;INC HL
-	;INC DE
-	;dec b
-	;jp nz,L74FA
-	;PUSH DE
-	;LD DE,$001C	; 28
-	;ADD HL,DE
-	;POP DE
-	;DEC C
-	;JP NZ,L74F8
-	;EI
 	RET
 
 ;----------------------------------------------------------------------------
@@ -2573,20 +2562,20 @@ LB348:	LD A,(L7F7A+1)
 	LD (L7F7A+1),A
 
 ; Change Console color in NEAR, so we see that console action worked
-;TODO: Rework to not use attributes
-LB350:	LD HL,$EA7B	; address in screen attributes
-	LD DE,$001C	; 28
-	LD C,$03	; 3 rows
-LB358:	LD B,$04	; 4 columns
-LB35A:	;LD A,(HL)
-	XOR $06
-	;LD (HL),A
-	INC HL
+LB350:	ld HL,$DB67	; NEAR screen address
+	ld c,4		; 4 columns
+_10:	ld b,24		; 24 lines
+	push hl
+_20:	ld a,(hl)
+	xor $FF
+	ld (hl),a
+	dec l		; next line
 	dec b
-	jp nz,LB35A
-	ADD HL,DE	; next row
-	DEC C
-	JP NZ,LB358
+	jp nz,_20
+	pop hl
+	inc h		; next column
+	dec c
+	JP NZ,_10
 LB365:	JP LB8D0	; => Update Ninja on tilemap
 
 ; Room 97A6 initialization
@@ -2622,6 +2611,7 @@ LB382:	dec b
 ;LB3AF:	DEFS $01
 
 ; Routine at B3B0
+LF913:			; redirect
 LB3B0:	;LD HL,LC681
 	;LD (L982B+2),HL	; set Room 982B initialization, NO NEED
 	;LD HL,LB673+1	; current dog data address, NO NEED
@@ -2650,9 +2640,6 @@ LB40A:	LD DE,GARDPOS	; address to store guard data
 	LD A,(HL)	; get Guard direction from Guard data
 	LD (GARDDIR),A	; set Guard direction
 	RET
-
-; Standard room initialization (for 60 rooms)
-LB422:	JP LB724	; => Finish room initialization
 
 ; Rooms 7C9C/92EF initialization
 L791B: ; redirect
@@ -2866,7 +2853,7 @@ _loop:	ld (hl),a	; fill with $00
 
 ; Routine at B5C7
 LB5C7:	CALL LAC44	; Reset Guard data and Dog data
-	;LD (LBC0D+1),SP
+	;LD (LBC0D+1),SP	; NO NEED
 	LD HL,LB7CA+1
 	LD (LE343+2),HL
 	;LD HL,LBC3B
@@ -3036,6 +3023,7 @@ LB706:	DEFW LB38F	; #00: Put 3x3 tiles L7C21; params: 2 bytes (address)
 
 ; Finish room initialization
 ; Called to finish room initialization from room initialization procedure
+LB422:			; redirect - Standard room initialization (for 60 rooms)
 LB724:
 	LD HL,TLSCR1	; Tile screen 1 start address
 	ld a,$01	; Filler = $01 = "need update" mark
@@ -3050,7 +3038,7 @@ LB724:
 	CALL DRALL	; Draw tile map on the screen
 ;
 	LD HL,LD34D	; Table of objects address
-	LD B,19		; 29 objects
+	LD B,29		; 29 objects
 LB753:	PUSH HL		; save address in Table of objects
 	LD A,(ROOM)	; get Current Room address, low byte
 	CP (HL)
@@ -3124,17 +3112,22 @@ LB7CA:	LD HL,$3939	; !!MUT-ARG!! "99" bomb timer initial value
 	LD (LAD57),HL	; set Indicator Time value
 	LD A,$01
 	LD (TIMECN),A
-	;LD HL,$EA76 ;TODO
-	;LD DE,$001C	; 28
-	;LD C,$03
-LB7DD:	;LD B,$04
-LB7DF:	;LD (HL),$D6	; set attribute
-	;INC HL
-	;dec b
-	;jp nz,LB7DF
-	;ADD HL,DE
-	;DEC C
-	;JP NZ,LB7DD
+; Highlight the time indicator
+	ld hl,$D64F	; screen address
+	ld c,4
+_10:	ld b,8
+	push hl
+_20:	ld a,(hl)
+	xor $FF
+	ld (hl),a
+	dec l		; down line
+	dec b
+	jp nz,_20
+	pop hl
+	inc h		; next column
+	dec c
+	jp nz,_10
+;
 	LD B,50		; 50 hundred
 	CALL LB4DE	; Increase PAY value by 5000
 LB7ED:	LD HL,TLSCR1	; Tile screen 1 start address
@@ -3735,12 +3728,6 @@ _10:	ld (hl),a
 	jp nz,_10
 	ret
 
-; Routine at BC0D
-; Prepare screen background for title picture
-LBC0D:	LD SP,$A000	; !!MUT-ARG!!
-	;EXX
-	;POP HL
-	;EXX
 ; Entry point
 LBC13:	;LD HL,LE5DC	; Melody start address
 	;LD (LE440+2),HL	; set melody current address
@@ -3813,17 +3800,12 @@ LBC98:	LD A,$D2
 	JP Z,LBC7E
 
 ; Check for suicide key combination
-LBC9D:	;LD A,$FE
-	;;IN A,($FE)
-	;BIT 0,A		; check for CAPS SHIFT key
-	;JP NZ,LBCB6	; not pressed => skip suicide
-	;LD A,$7F
-	;;IN A,($FE)
-	;BIT 0,A		; check for "1" key
-	;JP NZ,LBCB6	; not pressed => skip suicide
-	;LD HL,LBEEF	; "SEPUKU" / "MISSION ABORTED"
-	;LD (LBEB3+1),HL	; set two-line Game Over message
-	;JP LBE5A	; => Ninja sit, and then fall and DIE
+LBC9D:	ld a,(KeyLineEx)
+	and $60		; bits for US + SS
+	jp nz,LBCB6	; not pressed => skip suicide
+	LD HL,LBEEF	; "SEPUKU" / "MISSION ABORTED"
+	LD (LBEB3+1),HL	; set two-line Game Over message
+	JP LBE5A	; => Ninja sit, and then fall and DIE
 LBCB6:	CALL LC5A3	; Check for falling
 	JP Z,LC643	; => Ninja falling
 	LD HL,LB595
@@ -3842,8 +3824,8 @@ LBCCC:	LD HL,LB595	; action cooldown counter
 	JP NZ,LBDB2	; not zero =>
 	LD (HL),$05	; reset cooldown (5 ticks until next action)
 	LD A,(LB84C)	; get Object tile
-	CP $63
-	JP Z,LBD33	; => execute the object procedure
+	CP $63		; Object tile = $63 Console ?
+	JP Z,LBD33	; yes => execute the object procedure
 	LD B,A
 	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,TLSCR0+217	; Tile screen 0 + 217
@@ -3880,8 +3862,8 @@ LBD08:	LD (DE),A
 	CP (HL)
 	JP NZ,LB8D0	; => Update Ninja on tilemap
 	LD (HL),$01	; set Time mode = time stopped
-	LD HL,$0190
-	CALL LB371	; Play melody
+	;LD HL,$0190
+	;CALL LB371	; Play melody
 	LD B,50		; 50 hundred
 	CALL LB4DE	; Increase PAY value by 5000
 	JP LB8D0	; => Update Ninja on tilemap
@@ -4094,10 +4076,10 @@ LBEAA:	POP HL
 
 ; Movement handler: Game Over
 LBEB3:	LD HL,LBEEF	; !!MUT-ARG!! two-line message address
-	LD DE,$C8DF
+	LD DE,$C8DF	; screen address
 	LD C,$0F
 	CALL PRSTR	; Print string 1st line
-	LD DE,$C6CF
+	LD DE,$C6CF	; screen address
 	LD C,$14
 	CALL PRSTR	; Print string 2nd line
 	;LD HL,$E868
@@ -4123,7 +4105,8 @@ LBEDF:	NOP		; !!MUT-CMD!!
 	;NOP
 	LD A,$0A	; "LD A,(BC)" instruction code
 	LD (LBEDF),A
-	JP LBC0D	; => Title picture and music, then go to Main menu
+	;JP LBC0D	; => Title picture and music, then go to Main menu
+	JP LF9E7
 
 ; Routine at BF7B
 LBF7B:	LD HL,TLSCR0+2	; Tile screen 0 + 2
@@ -4199,8 +4182,8 @@ LBFD5:	LD B,10		; 10 hundred
 	LD HL,LC075	; Messages address
 	LD C,$0D
 	CALL PRSTR	; Print string "BONUS: $05000"
-	LD DE,$C875
-	LD HL,LE388
+	LD DE,$D597
+	LD HL,LE388	; level bonus string
 	LD C,$03
 	CALL PRSTR	; Print string
 	LD A,(LE38B)
@@ -4215,9 +4198,9 @@ LC04A:	LD A,(TIMODE)	; get Time mode
 	CALL LB4DE	; Increase PAY value by 10000 - Escape with Disk and Bomb
 LC056:	LD HL,LBF12	; "ESCAPE" / "MISSION SUCCESSFUL"
 	LD (LBEB3+1),HL	; set two-line Game Over message
-	NOP
-	NOP
-	NOP
+	;NOP
+	;NOP
+	;NOP
 	JP LBEB3	; => Game Over
 
 ; Movement handler: helicopter moving up
@@ -5381,8 +5364,6 @@ LE374:	;PUSH DE
 	;OR E
 	;JP NZ,LE374
 	RET
-LE388:	DEFM " 10"
-LE38B:	DEFB $0A
 
 ; Play next note in melody
 LE440:	;LD IX,$E51C
@@ -5523,10 +5504,6 @@ LE5DC:	DEFB $00,$FD	; Melody end/restart
 
 ;----------------------------------------------------------------------------
 
-; Routine at F913
-LF913:
-	JP LB3B0
-
 ; Room 84A8 initialization
 LF973:	LD HL,TLSCR0+74	; tile screen address
 	LD DE,LF98F	; block address
@@ -5580,13 +5557,14 @@ LF9BF:	dec b
 ;LF9E4:	CALL TLSCR0	; Prepare screen, show anti-piracy message, and wait for any key
 
 ; Start point after loading
-LF9E7:	;LD A,$21
+LF9E7:	ld SP,$0100
+	;LD A,$21
 	;LD (LAEDA+1),A
 	;LD A,$C6
 	;LD (LAEDA+2),A
 	CALL LBC13
-LF9F4:	CALL LF913
-	JP LF9F4
+LF9F4:	jp LF913
+	;JP LF9F4
 
 ; Routine at F9F9
 LF9F9:	LD HL,$00B4
