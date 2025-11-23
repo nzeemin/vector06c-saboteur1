@@ -160,19 +160,19 @@ IF (MIRROR AND $FF) NE 0		; Make sure the Mirror table properly aligned
 ENDIF
 ;
 ; Screen addresses for every 17 rows, used for Explosion drawing
-LBAB3:	DEFW $C1FF,$C1F7,$C1EF,$C1E7
-	DEFW $C1DF,$C1D7,$C1CF,$C1C7
-	DEFW $C1BF,$C1B7,$C1AF,$C1A7
-	DEFW $C19F,$C187,$C17F,$C177
-	DEFW $C16F
+LBAB3:	DEFW $C0FF,$C0F7,$C0EF,$C0E7
+	DEFW $C0DF,$C0D7,$C0CF,$C0C7
+	DEFW $C0BF,$C0B7,$C0AF,$C0A7
+	DEFW $C09F,$C087,$C07F,$C077
+	DEFW $C06F
 IF (LBAB3 AND $FF) NE 0		; Make sure the LBAB3 table properly aligned
 	.ERROR "LBAB3 table address should be aligned so lower byte is 0!"
 ENDIF
 
 ; Table of game screen rows addresses, 10 rows, for auto-gun drawings
 LA747:	DEFW $C1E2,$C1DA,$C1D2,$C1CA
-	DEFB $C1C2,$C1BA,$C1B2,$C1AA
-	DEFB $C1A2,$C19A
+	DEFW $C1C2,$C1BA,$C1B2,$C1AA
+	DEFW $C1A2,$C19A
 
 ; Guards data, 24 records, 6 bytes each
 ; +$04: Guard state, initially $0A
@@ -1535,7 +1535,7 @@ LA3B5:	LD A,(NJAY)	; get Ninja Y
 LA3BE:	LD A,$14	; !!MUT-ARG!! ??
 	LD (LA3B4),A
 	LD A,$0B
-	LD (GARDST),A	; set Guard state = $0B
+	LD (GARDST),A	; set Guard state = $0B = auto-gun
 	LD HL,LD504	; Sprite Ninja/Guard punching
 	LD (LA70E+1),HL	; set Guard sprite
 	JP LA6FF	; => Draw Guard on tilemap
@@ -1546,11 +1546,11 @@ LA3D1:	LD A,(NJAY)	; get Ninja Y
 	CP (HL)		; compare Ninja Y to Guard Y
 	RET NZ
 	LD A,(LA3A6)
-	or a
-	RET NZ
+	or a		; Object #2 active?
+	RET NZ		; yes => return
 	POP HL
 	LD A,$14
-	LD (GARDST),A	; set Guard state = $14
+	LD (GARDST),A	; set Guard state = $14 = throwing a knife
 	LD HL,LD504	; Sprite Ninja/Guard punching
 	LD (LA70E+1),HL	; set Guard sprite
 	JP LA6FF	; => Draw Guard on tilemap
@@ -1593,7 +1593,7 @@ LA418:	LD A,(NJAY)	; get Ninja Y
 	JP LA6FF	; => Draw Guard on tilemap
 
 ; Process a Guard
-LA434:	CALL LA75B	; Set update flags for Guard, 6x7 tiles
+LA434:	CALL UPGARD	; Set update flags for Guard, 6x7 tiles
 	LD HL,GARDST	; Guard state address
 	LD A,(HL)	; get Guard state
 ; Guard state = $0B ?
@@ -1611,22 +1611,25 @@ LA434:	CALL LA75B	; Set update flags for Guard, 6x7 tiles
 	ADD A,A		; Guard Y * 2
 	ld e,a
 	ld d,0
-	ld hl,LA747
-	add hl,de	; now HL = address on the screen
+	ld hl,LA747	; table of game screen rows addresses
+	add hl,de	; now HL = address in the table
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a		; now HL = address on the screen
 	LD A,(GARDX)	; get Guard X
-	LD D,$00
-	LD E,A
-	ADD HL,DE
+	add a,h
+	ld h,a
 	LD DE,$003C	; +60 = two rows
 	LD A,(GARDX)	; get Guard X
 	INC A
-	PUSH HL
+	PUSH HL		; save screen address
 	LD HL,(GARDPOS)	; get Current Guard position in tilemap
 	ADD HL,DE	; +60
 	EX DE,HL	; now DE = Guard position + two rows
-	POP HL
+	POP HL		; restore screen address
 	LD B,A
-	LD A,$2B	; "DEC HL" instruction
+	ld a,$25	; "dec h" instruction
 	LD (LA4D0),A	; set the instruction
 	LD A,$1B	; "DEC DE" instruction
 	LD (LA4D1),A	; set the instruction
@@ -1641,30 +1644,30 @@ LA434:	CALL LA75B	; Set update flags for Guard, 6x7 tiles
 	INC DE
 	INC DE
 	INC DE		; +5
-	INC HL
-	INC HL
-	INC HL
-	INC HL
-	INC HL		; +5
-	LD A,$23	; "INC HL" instruction
+	inc h
+	inc h
+	inc h
+	inc h
+	inc h		; +5
+	ld a,$24	; "inc h" instruction
 	LD (LA4D0),A	; set the instruction
 	LD A,$13	; "INC DE" instruction
 	LD (LA4D1),A	; set the instruction
-LA4A2:	PUSH HL
+LA4A2:	PUSH HL		; save screen address
 	LD HL,TLSCR0	; Tile screen 0 start address
 	ADD HL,DE
 	LD A,$64
-	CP (HL)
+	CP (HL)		; check background tile
 	JP C,LA4CD
 	LD HL,TLSCR5	; Tile screen 5 start address
 	ADD HL,DE
-	LD A,(HL)
-	INC A
+	LD A,(HL)	; check front tile
+	INC A		; $FF ?
 	JP NZ,LA4C0
 	LD HL,TLSCR1	; Tile screen 1 start address
 	ADD HL,DE
-	LD (HL),$01
-	POP HL
+	LD (HL),$01	; set "need update" marker
+	POP HL		; restore screen address
 	PUSH HL
 	LD A,$CC
 	XOR (HL)
@@ -1672,17 +1675,17 @@ LA4A2:	PUSH HL
 LA4C0:	LD HL,TLSCR2	; Tile screen 2 start address
 	ADD HL,DE
 	LD A,(HL)
-	INC A
-	JP Z,LA4CF
-	LD B,$04
+	INC A		; $FF ?
+	JP Z,LA4CF	; yes =>
+	LD B,$04	; Ninja hit
 	CALL NRJDEC	; Decrease Energy by B
 LA4CD:	LD B,$01
-LA4CF:	POP HL
-LA4D0:	DEC HL		; !!MUT-CMD!! "DEC HL" or "INC HL" instruction
+LA4CF:	POP HL		; restore screen address
+LA4D0:	dec h		; !!MUT-CMD!! "dec h" or "inc h" instruction
 LA4D1:	DEC DE		; !!MUT-CMD!! "DEC DE" or "INC DE" instruction
 	dec b
 	jp nz,LA4A2
-	XOR A
+	;XOR A
 	;OUT ($FE),A
 	LD A,(LA3B4)	; get Guard counter
 	or a
@@ -1769,6 +1772,7 @@ LA56D:	CP $09
 ; Guard state = $08 ?
 LA57A:	CP $08
 	JP NZ,LA5AA
+; Guard state = $08 - Punching ?
 	PUSH HL
 	LD HL,LA3B4	; Guard counter address
 	DEC (HL)	; decrease Guard counter
@@ -1790,9 +1794,10 @@ LA599:	ADD HL,DE
 	LD (LA70E+1),HL	; set Guard sprite
 	JP LA6FF	; => Draw Guard on tilemap
 
-; Guard state = $05 ? - Preparing for jump-kick
+; Guard state = $05 ?
 LA5AA:	CP $05
 	JP NZ,LA5C7
+; Guard state = $05 - jump
 	PUSH HL
 	LD HL,LA3B4	; Guard counter address
 	DEC (HL)	; decrease Guard counter
@@ -1808,6 +1813,7 @@ LA5AA:	CP $05
 ; Guard state = $06 ?
 LA5C7:	CP $06
 	JP NZ,LA5FC
+; Guard state = $06 - jump-kick
 	PUSH HL
 	LD HL,LA3B4	; Guard counter address
 	DEC (HL)	; decrease Guard counter
@@ -1831,9 +1837,10 @@ LA5F1:	ADD HL,DE	; now HL = address in Ninja tile screen
 	CALL NZ,LFA31	; not $FF => Decrease Energy by 10 + Sound
 	JP LA6FF	; => Draw Guard on tilemap
 
-; Guard state = $07 ? - back to standing
+; Guard state = $07 ?
 LA5FC:	CP $07
 	JP NZ,LA614
+; Guard state = $07 - back to standing
 	PUSH HL
 	LD HL,LA3B4	; Guard counter address
 	DEC (HL)	; decrease Guard counter
@@ -2005,7 +2012,7 @@ LA734:	LD A,(DE)	; get tile
 	RET
 
 ; Set update flags for Guard, 6x7 tiles
-LA75B:	ld hl,(GARDPOS)	; get Current Guard position in tilemap
+UPGARD:	ld hl,(GARDPOS)	; get Current Guard position in tilemap
 	ex de,hl
 	LD HL,TLSCR1	; Tile screen 1 start address
 	ADD HL,DE	; now HL in update flags tilemap
@@ -2504,20 +2511,18 @@ LB284:	LD A,(DE)	; get byte from buffer
 	LD (DE),A	; set as current attribute
 
 ; Draw prepared tile on the screen
-LB293:	NOP
+LB293:	;NOP
 	POP DE
 	PUSH DE
 	LD HL,LB13E	; Tile buffer address
-	LD B,$08	; 8 bytes
-LB29B:	LD A,(HL)	; get byte from the buffer
+LB29B:	REPT 7
+	LD A,(HL)	; get byte from the buffer
 	LD (DE),A	; put byte on the screen
 	INC HL
 	dec e		; next line
-	dec b
-	jp nz,LB29B	; loop for all 8 bytes
-	;LD A,(HL)	; get attribute byte from the buffer
-	;LD HL,(L7233)	; get address in screen attributes
-	;LD (HL),A	; put the attribute
+	ENDM
+	LD A,(HL)	; get byte from the buffer
+	LD (DE),A	; put byte on the screen
 
 ; Next column
 LB2A6:	POP DE
@@ -2538,12 +2543,6 @@ LB2CB:	ld a,e
 	sub $08
 	ld e,a
 	ld d,$C1
-	;PUSH HL
-	;LD HL,(L7233)	; get screen attributes address
-	;INC HL
-	;INC HL		; increase address by 2 - next row
-	;LD (L7233),HL	; set screen attributes address
-	;POP HL
 	DEC B		; Decrease line counter
 	JP NZ,LB16D	; Continue loop by lines
 	RET
@@ -3094,7 +3093,7 @@ LB768:	POP HL		; restore address in Table of objects
 	dec b
 	jp nz,LB753	; continue loop by objects
 	LD A,(GARDST)	; get Guard state
-	CP $09
+	CP $09		; dead?
 	JP Z,LB77B
 	LD A,$0A
 	LD (GARDST),A	; set Guard state = $0A
@@ -3346,10 +3345,10 @@ LBA21:	POP BC		; restore loop counter
 	DEC B
 	JP NZ,LB93D	; continue loop by objects
 ;
-; Fill "need update" marks
+; Fill "need update" marks for Explosion
 LBA2A:	LD HL,TLSCR1+165	; !!MUT-ARG!!
-LBA2D:	LD B,$03
-LBA2F:	LD C,$03
+LBA2D:	LD B,$03	; !!MUT-ARG!! height, rows
+LBA2F:	LD C,$03	; !!MUT-ARG!! width, columns
 	PUSH HL
 LBA32:	LD (HL),$01
 	INC HL
@@ -3526,7 +3525,7 @@ LBAF0:	LD HL,LBAB2	; Explosion counter address
 	LD DE,TLSCR1-31	; + Tile screen 1 - 31
 	ADD HL,DE
 	LD (LBA2A+1),HL	; set Tile screen 1 address
-	;LD (LBA8E+1),HL	; set screen attributes address
+	;LD (LBA8E+1),HL	; NO NEED set screen attributes address
 	LD A,(LA39F+5)	; get object Y
 	ADD A,A		; * 2
 	ld l,a
@@ -3535,97 +3534,98 @@ LBAF0:	LD HL,LBAB2	; Explosion counter address
 	inc hl
 	ld h,(hl)
 	ld l,a		; now HL = screen address of the row beginning
-	ADD HL,DE	;TODO
-	LD (LBA57+1),HL
-	LD B,$03
-	LD C,$03
+	ld a,(LA39F+6)	; get object X
+	add a,h
+	ld h,a		; now HL = screen address
+	LD (LBA57+1),HL	; set screen address
+	LD B,3		; height, rows, initial
+	LD C,3		; width, columns, initial
 	ld hl,LABE5	; Explosion image address
 	ld (LBA5A+1),hl	; set Explosion image address
 	LD HL,(LBA2A+1)
-	LD DE,$0000
+	LD DE,$0000	; offset for screen address
 	LD A,(LA39F+5)	; get object Y
-	CP $10
+	CP $10		; bottom row?
 	JP NZ,LBB59
-	DEC B
-LBB59:	CP $00
+	DEC B		; decrease height
+LBB59:	CP $00		; top row?
 	JP NZ,LBB6A
-	DEC B
+	DEC B		; decrease height
 	LD DE,$001E	; 30
 	ADD HL,DE
 	ex de,hl
 	ld hl,LABFD
 	ld (LBA5A+1),hl	; set Explosion image address
 	ex de,hl
-	LD DE,$0020
+	LD DE,$FFF8	; offset for screen address = one row down
 LBB6A:	LD A,(LBA5A+6)
-	CP $1D
+	CP $1D		; right limit?
 	JP NZ,LBB72
-	DEC C
-LBB72:	CP $00
+	DEC C		; decrease width
+LBB72:	CP $00		; left limit?
 	JP NZ,LBB7C
-	DEC C
+	DEC C		; decrease width
 	INC HL
-	INC DE
+	inc d		; tune screen address offset, one column right
 	push hl
 	ld hl,LBA5A+1
 	inc (hl)	; inc Explosion image address
 	pop hl
 LBB7C:	LD A,B
-	LD (LBA2D+1),A	; set ??
+	LD (LBA2D+1),A	; set height
 	LD (LBA5D+1),A
-	LD (LBA91+1),A
+	;LD (LBA91+1),A	; NO NEED, attributes
 	LD A,C
-	LD (LBA2F+1),A	; set ??
+	LD (LBA2F+1),A	; set width
 	LD (LBA5F+1),A
-	LD (LBA96+1),A
+	;LD (LBA96+1),A	; NO NEED, attributes
 	LD (LBA2A+1),HL	; address in Tile screen 1
 	LD HL,(LBA57+1)	; get screen address
 	ADD HL,DE
 	LD (LBA57+1),HL	; set screen address
-	LD HL,(LBA8E+1)
-	ADD HL,DE
-	LD (LBA8E+1),HL
+	;LD HL,(LBA8E+1)	; NO NEED, attributes
+	;ADD HL,DE
+	;LD (LBA8E+1),HL
 ; Delete the object
 LBBA7:	XOR A
 LBBA8:	ld (LA39F),a	; !!MUT-ARG!! set object empty
 	ret
 
 ; Draw Explosion image and make some noise
-LBA52:	LD A,$10
+LBA52:	;LD A,$10
 	;OUT ($FE),A
 LBA57:	LD HL,$C0D0	; !!MUT-ARG!! address on the screen
 LBA5A:	LD DE,LABE5	; !!MUT-ARG!! Explosion image address
-LBA5D:	LD B,$03	; !!MUT-ARG!! 1..3
-LBA5F:	LD C,$03	; !!MUT-ARG!! 1..3
+LBA5D:	LD B,3		; !!MUT-ARG!! height 1..3
+LBA5F:	LD C,3		; !!MUT-ARG!! width 1..3
 	PUSH HL
 	PUSH DE
 LBA63:	PUSH HL
 	PUSH BC
-	LD B,$08
-LBA67:	LD A,(DE)
-	LD (HL),A
+	LD B,8
+LBA67:	LD A,(DE)	; get pixels
+	LD (HL),A	; put to screen
 	INC DE
 	dec l 		; line down
 	dec b
 	jp nz,LBA67
 	POP BC
 	POP HL
-	INC HL
+	inc h		; next column
 	DEC C
 	JP NZ,LBA63
 	POP DE
-	LD HL,$0018
+	LD HL,$0018	; 24
 	ADD HL,DE
 	EX DE,HL
-	POP HL
-	PUSH DE
-	ld DE,$FFF8	; 8 lines down
-	ADD HL,DE
-	POP DE
+	POP HL		; restore screen address
+	ld a,l
+	sub 8		; 8 lines down
+	ld l,a
 	dec b
 	jp nz,LBA5F
-LBA8E:	LD HL,$E8D0	; !!MUT-ARG!! address in screen attributes
-LBA91:	;LD B,$03
+LBA8E:	;LD HL,$E8D0	; !!MUT-ARG!! address in screen attributes
+LBA91:	;LD B,$03	; !!MUT-ARG!!
 	;LD DE,$0020
 LBA96:	;LD C,$03	; !!MUT-ARG!!
 	;PUSH HL
@@ -3643,7 +3643,7 @@ LBA99:	;LD A,(HL)
 	;LD A,$72
 LBAA9:	;LD ($E8F1),A	; !!MUT-ARG!! address in screen attributes
 	;XOR A
-	;OUT ($FE),A
+	;OUT ($FE),A	; Sound off
 	ret
 
 LBAB2:	DEFB $00	; ??
