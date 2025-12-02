@@ -1605,8 +1605,8 @@ LA434:	CALL UPGARD	; Set update flags for Guard, 6x7 tiles
 	LD A,(HL)	; get Guard counter
 	CP $06
 	JP NC,LA6FF	; => Draw Guard on tilemap
-	LD A,$10
-	;OUT ($FE),A
+	ld a,1
+	out ($00),a	; sound on
 	LD A,(GARDY)	; get Guard Y
 	ADD A,A		; Guard Y * 2
 	ld e,a
@@ -1685,8 +1685,8 @@ LA4D0:	dec h		; !!MUT-CMD!! "dec h" or "inc h" instruction
 LA4D1:	DEC DE		; !!MUT-CMD!! "DEC DE" or "INC DE" instruction
 	dec b
 	jp nz,LA4A2
-	;XOR A
-	;OUT ($FE),A
+	xor a
+	out ($00),a	; sound off
 	LD A,(LA3B4)	; get Guard counter
 	or a
 	JP NZ,LA6FF	; => Draw Guard on tilemap
@@ -2827,14 +2827,13 @@ LB53D:	LD DE,TLSCR5+349
 	LD A,(LB5A8)
 	XOR $01
 	LD (LB5A8),A
-	LD C,$FE
-	LD B,$05
-	LD A,$10
-	;OUT (C),A
+	LD B,5
+	ld a,1
+	out ($00),a	; sound on
 LB56B:	dec b
 	jp nz,LB56B	; delay
-	XOR A
-	;OUT (C),A
+	xor a
+	out ($00),a	; sound off
 	LD HL,L7343	; counter address
 	DEC (HL)	; decrease counter
 	JP NZ,LB8D0	; => Update Ninja on tilemap
@@ -2852,7 +2851,7 @@ LB56B:	dec b
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
 
 ; Routine at B596
-LB596:	LD B,$14
+LB596:	LD B,14
 LB598:	JP LF9A1
 
 ;LB59B:	DEFB $FE,$0E,$2D
@@ -2904,7 +2903,7 @@ LB5F5:	LD (HL),A
 	LD (TIMODE),A	; set Time mode = time ticking
 	LD (LB850),A	; clear HELD tile
 	LD (LD486+8),A	; set tile in Ninja sprite
-	;OUT ($FE),A	; set border black, sound off
+	out ($00),a	; sound off
 	;ld (BorderColor),a
 	INC A
 	LD (LD486+9),A	; set head tile for Ninja/Guard standing sprite
@@ -3501,7 +3500,7 @@ LBA0C:	LD B,20		; Ninja hit by the object
 ;
 ; This object should be deleted, Granade explode
 ; HL = object address in LA39F table
-LBAD5:	;CALL LFA28	; Sound
+LBAD5:	CALL LFA28	; Sound
 LBAD8:	ld hl,LA39F	; !!MUT-ARG!! restore object address
 	ld (LBBA8+1),hl	; save object address for object deletion
 	LD A,(ROOM)	; get current room address low byte
@@ -3642,8 +3641,8 @@ LBA99:	;LD A,(HL)
 	;jp nz,LBA96
 	;LD A,$72
 LBAA9:	;LD ($E8F1),A	; !!MUT-ARG!! address in screen attributes
-	;XOR A
-	;OUT ($FE),A	; Sound off
+	xor a
+	out ($00),a	; Sound off
 	ret
 
 LBAB2:	DEFB $00	; ??
@@ -3973,7 +3972,7 @@ LBDA2:	LD A,B
 ; Ninja standing (redirect)
 LBDAF:	JP LC226	; => Ninja standing
 
-; Routine at BDB2
+; ?? Ninja action?
 LBDB2:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,TLSCR4+34	; Tile screen 4 + 34 for right
 	LD A,(NJADIR)	; get Ninja direction
@@ -3986,7 +3985,7 @@ LBDC2:	ADD HL,DE	; now HL = address in Guard tilemap
 	JP Z,LBDD4	; empty =>
 	LD A,$09
 	LD (GARDST),A	; set Guard state = $09 dead
-	CALL LB596
+	CALL LB596	; Noise sound
 	LD B,5		; 5 hundreds
 	CALL LB4DE	; Increase PAY value by 500 - Guard killed by punch/kick
 LBDD4:	LD HL,LBBD4	; Movement handler address
@@ -4098,8 +4097,8 @@ LBE97:	INC (HL)
 	JP NZ,LBE88
 	dec b
 	jp nz,LBE86
-	;XOR A
-	;OUT ($FE),A
+	xor a
+	out ($00),a	; Sound off
 	PUSH HL
 
 ; Saboteur is dead
@@ -4242,8 +4241,8 @@ LC056:	LD HL,LBF12	; "ESCAPE" / "MISSION SUCCESSFUL"
 LC094:	LD HL,L7343	; counter address
 	DEC (HL)	; decrease counter
 	JP Z,LBFD5	; zero => Escaped; final messages, then Game Over
-	;LD A,$10
-	;OUT ($FE),A
+	ld a,1
+	out ($00),a	; sound on
 	LD HL,$C7F3
 	LD DE,$C7F7
 	LD B,15*8
@@ -4264,6 +4263,8 @@ _loop:	ld a,(hl)
 	pop bc
 	dec b
 	jp nz,LC0AB
+	xor a
+	out ($00),a	; sound off
 	JP LB8D0	; => Update Ninja on tilemap
 
 ; Ninja on ladder
@@ -4456,12 +4457,10 @@ LC2BB:	ld a,(INPUTB)
 	JP NZ,LC2E8
 	INC A
 	LD (LA39E),A
-	LD C,$FE
-	XOR A
-	LD D,$10
-	LD B,$32
-LC2E2:	;OUT (C),D
-	;OUT (C),A
+	LD B,49		; should be odd number
+	xor a
+LC2E2:	out ($00),a	; sound of steps
+	xor 1
 	dec b
 	jp nz,LC2E2
 LC2E8:	LD H,$00
@@ -4732,7 +4731,7 @@ LC4BE:	ADD HL,DE
 	JP Z,LC4D0
 	LD A,$09
 	LD (GARDST),A	; set Guard state = $09 dead
-	CALL LB596
+	CALL LB596	; Noise sound
 	LD B,5		; 5 hundred
 	CALL LB4DE	; Increase PAY value by 500 - Guard killed by punch/kick
 ; Entry point
@@ -4901,8 +4900,8 @@ LC5EE:	LD A,$01
 	LD B,(HL)	; get counter value
 	LD (HL),$00	; clear falling counter
 	CALL NRJDEC	; Decrease Energy by B
-	LD B,$32
-	CALL LB59E	; Sound ??
+	LD B,7
+	CALL LB59E	; Noise sound
 	JP LBFCC	; => Ninja sitting now
 
 ; Going to room Down from current
@@ -5093,10 +5092,11 @@ LDEC6:	PUSH DE
 	jp nz,LDEC6
 	RET
 
-; Routine at DF37
+; Prepare for Menu
 LDF37:	;LD A,$01	; blue
 	;ld (BorderColor),a
-	;OUT ($FE),A	; set border color, sound off
+	xor a
+	out ($00),a	; sound off
 	;LD ($5C09),A	; set REPDEL = 1
 	;LD ($5C0A),A	; set REPPER = 1
 	;LD A,$08
@@ -5578,21 +5578,25 @@ LF97D:	LD A,(DE)
 	JP NZ,LF97B
 	JP LB422
 
-; Sound ??
-LF9A1:	;RL B
-	;RL B
-	;RL B
-	;RL B
-	LD HL,$0000
-LF9AC:	LD A,(HL)
-	AND $F8
-	;OUT ($FE),A
-	LD C,(HL)
+; Noise sound
+; B = how long
+LF9A1:	ld a,b
+	rla
+	rla
+	rla
+	ld b,a
+	LD HL,SABOTCOD0_END	; address where to get delay values
+	xor a
+LF9AC:	out ($00),a
+	xor 1
+	LD C,(HL)	; get delay
 	INC HL
-LF9B3:	DEC C
+LF9B3:	DEC C		; delay
 	JP NZ,LF9B3
 	dec b
 	jp nz,LF9AC
+	xor a
+	out ($00),a	; sound off
 	RET
 
 ; Pause, then wait for any key pressed
