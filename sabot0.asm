@@ -150,15 +150,15 @@ BorderColor:	DB 0		; border color number 0..15
 ;----------------------------------------------------------------------------
 
 ColorNone EQU 00000000b    ; Color for empty bits  - black
-ColorGame EQU 11011011b    ; Color for $E000-$FFFF - yellow
-ColorText EQU 10111111b    ; Color for $C000-$DFFF - blue
-ColorBoth EQU 00000111b    ; Color for both planes - red
+ColorOne  EQU 10110110b    ; Color for bit 1       - yellow
+ColorTwo  EQU 11010001b    ; Color for bit 0       - blue
+ColorThre EQU 01000110b    ; Color for both planes - red
 ; Palette colors, game
 PaletteGame:		; Palette
-	DB	ColorNone, ColorGame, ColorText, ColorBoth	; 0..3
-	DB	ColorNone, ColorGame, ColorText, ColorBoth	; 4..7
-	DB	ColorNone, ColorGame, ColorText, ColorBoth	; 8..11
-	DB	ColorNone, ColorGame, ColorText, ColorBoth	; 12..15
+	DB	ColorNone, ColorOne, ColorTwo, ColorThre	; 0..3
+	DB	ColorNone, ColorOne, ColorTwo, ColorThre	; 4..7
+	DB	ColorNone, ColorOne, ColorTwo, ColorThre	; 8..11
+	DB	ColorNone, ColorOne, ColorTwo, ColorThre	; 12..15
 
 ;----------------------------------------------------------------------------
 

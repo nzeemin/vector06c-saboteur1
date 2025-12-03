@@ -2190,6 +2190,17 @@ LAEDA:	ld de,FONT-256	; !!MUT-ARG!! font address
 	ADD HL,DE
 	POP DE
 	PUSH DE
+	xor a
+	REPT 7
+	ld (de),a
+	dec e		; next screen line
+	ENDM
+	ld (de),a
+	POP DE
+	PUSH DE
+	ld a,d
+	add a,$20	; switch to 2nd plane
+	ld d,a
 	LD B,$08
 LAEE2:	LD A,(HL)
 	LD (DE),A
@@ -2255,11 +2266,9 @@ LB177:	ld hl,(L7238)	; get offset
 	ld de,TLSCR0
 	add hl,de	; now HL = address in Tile screen 0
 	ld a,(hl)	; get tile from Tile screen 0
-	LD HL,LB1A3	; for non-$FF, don't skip Ninja tile processing
 	CP $FF		; $FF - "earth" background?
-	JP NZ,LB184	; byte <> $FF =>
-	LD HL,LB1F9	; for $FF, skip Ninja tile processing
-LB184:	LD (LB1A0+1),HL	; save the chosen jump address (LB1A3 or LB1F9)
+	jp z,DRTILE_FF
+LB184:
 	LD H,$00
 	LD L,A
 	PUSH HL
@@ -2279,7 +2288,6 @@ LB199:	LD A,(HL)	; get byte from tile data
 	dec b
 	jp nz,LB199	; loop for 9 bytes
 	LD (DE),A	; save attribute byte once more
-LB1A0:	JP LB1A3	; !!MUT-ARG!! LB1A3 or LB1F9
 
 ; Process Tile screen 2 tile - Ninja
 LB1A3:	ld hl,(L7238)	; get offset
@@ -2511,19 +2519,186 @@ LB284:	LD A,(DE)	; get byte from buffer
 	LD (DE),A	; set as current attribute
 
 ; Draw prepared tile on the screen
-LB293:	;NOP
+LB293:
+	ld a,(LB146)	; get attribute byte
+	and $07		; 0..4
+	ld l,a
+	ld h,$00
+	ld de,DRTILE_T	; Table of DRTILE strategies
+	add hl,de	; now HL = address in the table
+	LD A,(HL)	; get address low byte
+	INC HL
+	LD H,(HL)	; get address high byte
+	LD L,A		; now HL = room token procedure address
 	POP DE
 	PUSH DE
+	JP (HL)		; => run token procedure
+;
+; Strategy 1: pixels to 1st plane, clear 2nd plane - blue / black
+DRTILE_1:
 	LD HL,LB13E	; Tile buffer address
-LB29B:	REPT 7
-	LD A,(HL)	; get byte from the buffer
-	LD (DE),A	; put byte on the screen
-	INC HL
+	REPT 7
+	LD A,(hl)	; get byte from the buffer
+	LD (de),A	; put byte on the screen
+	inc hl
 	dec e		; next line
 	ENDM
-	LD A,(HL)	; get byte from the buffer
-	LD (DE),A	; put byte on the screen
-
+	LD a,(hl)	; get byte from the buffer
+	LD (de),a	; put byte on the screen
+	ld a,d
+	add a,$20	; switch to 2nd plane
+	ld d,a
+	xor a
+	REPT 7
+	ld (de),a
+	inc e		; prev line
+	ENDM
+	ld (de),a
+	jp LB2A6
+; Strategy 2: clear 1nd plane, pixels to 2nd plane - yellow / black
+DRTILE_2:
+	xor a
+	REPT 7
+	ld (de),a
+	dec e		; next line
+	ENDM
+	ld (de),a
+	ld a,d
+	add a,$20	; switch to 2nd plane
+	ld d,a
+	LD HL,LB13E+7	; Tile buffer address
+	REPT 7
+	LD a,(hl)	; get byte from the buffer
+	LD (de),a	; put byte on the screen
+	dec hl
+	inc e		; prev line
+	ENDM
+	LD a,(hl)	; get byte from the buffer
+	LD (de),a	; put byte on the screen
+	jp LB2A6
+; Strategy 3: pixels to 1st and 2nd plane - red / black
+DRTILE_3:
+	LD HL,LB13E	; Tile buffer address
+	REPT 7
+	LD A,(hl)	; get byte from the buffer
+	LD (de),A	; put byte on the screen
+	inc hl
+	dec e		; next line
+	ENDM
+	LD a,(hl)	; get byte from the buffer
+	LD (de),a	; put byte on the screen
+	ld a,d
+	add a,$20	; switch to 2nd plane
+	ld d,a
+	REPT 7
+	LD a,(hl)	; get byte from the buffer
+	LD (de),a	; put byte on the screen
+	dec hl
+	inc e		; prev line
+	ENDM
+	LD a,(hl)	; get byte from the buffer
+	LD (de),a	; put byte on the screen
+	jp LB2A6
+; Strategy 4: $FF to 1st plane, pixels to 2nd plane - red / blue
+DRTILE_4:
+	ld a,$FF
+	REPT 7
+	ld (de),a
+	dec e		; next line
+	ENDM
+	ld (de),a
+	ld a,d
+	add a,$20	; switch to 2nd plane
+	ld d,a
+	LD HL,LB13E+7	; Tile buffer address
+	REPT 7
+	LD a,(hl)	; get byte from the buffer
+	LD (de),a	; put byte on the screen
+	dec hl
+	inc e		; prev line
+	ENDM
+	LD a,(hl)	; get byte from the buffer
+	LD (de),a	; put byte on the screen
+	jp LB2A6
+; Strategy 4: pixels to 1st plane, $FF to 2nd plane - red / yellow
+DRTILE_5:
+	LD HL,LB13E	; Tile buffer address
+	REPT 7
+	LD A,(hl)	; get byte from the buffer
+	LD (de),A	; put byte on the screen
+	inc hl
+	dec e		; next line
+	ENDM
+	LD a,(hl)	; get byte from the buffer
+	LD (de),a	; put byte on the screen
+	ld a,d
+	add a,$20	; switch to 2nd plane
+	ld d,a
+	ld a,$FF
+	REPT 7
+	ld (de),a
+	inc e		; prev line
+	ENDM
+	ld (de),a
+	jp LB2A6
+; Strategy 6: pixels to 1st plane, inverted pixels to 2nd plane - blue / yellow
+DRTILE_6:
+	LD HL,LB13E	; Tile buffer address
+	REPT 7
+	LD A,(hl)	; get byte from the buffer
+	LD (de),A	; put byte on the screen
+	inc hl
+	dec e		; next line
+	ENDM
+	LD a,(hl)	; get byte from the buffer
+	LD (de),a	; put byte on the screen
+	ld a,d
+	add a,$20	; switch to 2nd plane
+	ld d,a
+	REPT 7
+	LD a,(hl)	; get byte from the buffer
+	cpl
+	LD (de),a	; put byte on the screen
+	dec hl
+	inc e		; prev line
+	ENDM
+	LD a,(hl)	; get byte from the buffer
+	cpl
+	LD (de),a	; put byte on the screen
+	jp LB2A6
+;STUB
+DRTILE_0:
+	jp LB2A6
+; Draw tile $FF
+DRTILE_FF:
+	pop hl		; get screen address
+	push hl
+	ld de,$2000
+	ld (hl),d	; inversed $DF
+	dec l
+	ld (hl),$04	; inversed $FB
+	dec l
+	ld (hl),d	; inversed $DF
+	dec l
+	ld (hl),e	; inversed $FF
+	dec l
+	ld (hl),$08	; inversed $F7
+	dec l
+	ld (hl),e	; inversed $FF
+	dec l
+	ld (hl),d	; inversed $DF
+	dec l
+	ld (hl),e	; inversed $FF
+	ld a,h
+	add a,$20	; switch to 2nd plane
+	ld h,a
+	xor a
+	REPT 7
+	ld (hl),a
+	inc l		; prev line
+	ENDM
+	ld (hl),a
+;
 ; Next column
 LB2A6:	POP DE
 	POP BC
@@ -2546,6 +2721,10 @@ LB2CB:	ld a,e
 	DEC B		; Decrease line counter
 	JP NZ,LB16D	; Continue loop by lines
 	RET
+
+DRTILE_T:
+	DEFW DRTILE_0, DRTILE_1, DRTILE_2, DRTILE_3
+	DEFW DRTILE_4, DRTILE_5, DRTILE_6, DRTILE_0
 
 ; Mirror byte A
 MirrorByte:
@@ -5708,7 +5887,7 @@ IF Sabot1Tiles1Gap NE 2013	; Make sure second part of tiles properly aligned
 ENDIF
 INCLUDE "sabot1t1b.asm"
 INCLUDE "sabot1t2.asm"
-	DEFS 295
+	DEFS 360
 INCLUDE "sabot1t3.asm"
 
 ;----------------------------------------------------------------------------
