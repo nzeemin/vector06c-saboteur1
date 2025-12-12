@@ -695,7 +695,7 @@ L628F: 	LD A,(HL)	; Load next byte of picture data
  	CP $02		; check for control byte $02 - end of sequence
  	JP Z,L62A9 	; => Copy the buffer to screen
  	INC HL		; move to next source byte
- 	CP $00		; check for repeater marker
+ 	or a		; check for repeater marker
  	JP Z,L62A1 	; => repeat byte N times
  	CP $FF		; check for block marker
  	JP Z,L62A1 	; => repeat byte N times
@@ -996,7 +996,7 @@ L7465:	LD (HL),A
 ;------------------------------------------------------------------------------
 
 ; Initial Energy fill
-L7472:	ld de,$C657	; screen address
+L7472:	ld de,$E657	; screen address
 	ld a,$FF	; filler
 	ld b,15
 L7481:	push de
@@ -1016,7 +1016,7 @@ L7497:	LD (NRJLO),A
 	RET
 
 ; Decreasing Energy
-L749E:	ld hl,$C157	; screen address for line start + 1
+L749E:	ld hl,$E157	; screen address for line start + 1
 	LD A,(NRJ)	; get Energy
 	ld d,a
 	ld e,$00
@@ -1110,13 +1110,13 @@ L9C80:	LD A,(DOGDIR)	; !!MUT-ARG!! get Dog direction
 	JP L9D31	; => Set Dog sprite = HL, Draw Dog in tilemap
 
 ; Part of Dog processing
-L9CA8:	CP $00
+L9CA8:	or a		; Dog state = 0 ?
 	JP NZ,L9D8B
 	LD HL,(DOGPOS)	; get Dog position in tilemap
 	LD DE,TLSCR2+33	; Tile screen 2 + 33: for right direction
 	LD A,(DOGDIR)	; get Dog direction
-	CP $01		; right?
-	JP Z,L9CBD	; right =>
+	or a		; right?
+	jp nz,L9CBD	; right =>
 	LD DE,TLSCR2+30	; Tile screen 2 + 30: for left direction
 L9CBD:	ADD HL,DE	; now HL = Dog position in Ninja tile screen
 	LD A,(HL)	; get tile from Ninja tile screen
@@ -1171,7 +1171,7 @@ L9D14:	LD HL,L71D5
 	LD (HL),$00
 L9D1F:	LD A,(HL)
 	LD HL,L71F2	; Sprite Dog 1
-	CP $00
+	or a		; = 0 ?
 	JP Z,L9D31	; => Set Dog sprite = HL, Draw Dog in tilemap
 	LD HL,L71FE	; Sprite Dog 2
 	CP $01
@@ -1248,7 +1248,7 @@ L9D7A:	LD A,(DE)
 L9D8B:	LD HL,L7216	; Sprite Dog 4
 	LD (L9D3B+1),HL
 	LD A,(DOGDIX)
-	CP $00
+	or a
 	JP Z,L9DB3
 	LD A,(DOGDIR)	; get Dog direction
 	or a		; left?
@@ -1596,11 +1596,43 @@ LA418:	LD A,(NJAY)	; get Ninja Y
 LA434:	CALL UPGARD	; Set update flags for Guard, 6x7 tiles
 	LD HL,GARDST	; Guard state address
 	LD A,(HL)	; get Guard state
-; Guard state = $0B ?
-	CP $0B
-	JP NZ,LA4E7
+	cp $15		; < $15 ?
+	jp nc,LA614
+	ld l,a
+	ld h,0
+	add hl,hl	; * 2
+	ld de,GuardStateTbl
+	add hl,de
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	jp (hl)
+GuardStateTbl:
+	dw	LA614	; $00  walk 0
+	dw	LA614	; $01  walk 1
+	dw	LA614	; $02  walk 2
+	dw	LA614	; $03  walk 3
+	dw	LA614	; $04
+	dw	LA5AE	; $05  jump
+	dw	LA5CB	; $06  jump-kick
+	dw	LA600	; $07  back to standing
+	dw	LA57E	; $08  punch
+	dw	LA571	; $09  dead
+	dw	LA533	; $0A  standing
+	dw	LA440	; $0B  auto-gun
+	dw	LA614	; $0C
+	dw	LA614	; $0D
+	dw	LA614	; $0E
+	dw	LA614	; $0F
+	dw	LA614	; $10
+	dw	LA614	; $11
+	dw	LA614	; $12
+	dw	LA614	; $13
+	dw	LA4EB	; $14  throw knife
+
 ; Guard state = $0B = auto-gun
-	LD HL,LA3B4	; Guard counter address
+LA440:	LD HL,LA3B4	; Guard counter address
 	DEC (HL)	; decrease Guard counter
 	LD A,(HL)	; get Guard counter
 	CP $06
@@ -1694,10 +1726,8 @@ LA4D1:	DEC DE		; !!MUT-CMD!! "DEC DE" or "INC DE" instruction
 	LD (GARDST),A	; set Guard state = $04
 	JP LA6FF	; => Draw Guard on tilemap
 
-; Guard state = $14 ?
-LA4E7:	CP $14
-	JP NZ,LA52F
 ; Guard state = $14 = throwing a knife
+LA4EB:	ld hl,GARDST	; Guard state address
 	LD (HL),$04	; set Guard state = $04
 	LD HL,LD486	; Sprite Ninja/Guard standing
 	LD (LA70E+1),HL	; set Guard sprite
@@ -1732,11 +1762,8 @@ LA50B:	ADD HL,DE
 	ld (hl),a
 	JP LA6FF	; => Draw Guard on tilemap
 
-; Guard state = $0A ?
-LA52F:	CP $0A
-	JP NZ,LA56D
 ; Guard state = $0A - Standing
-	LD HL,LD486	; Sprite Ninja/Guard standing
+LA533:	LD HL,LD486	; Sprite Ninja/Guard standing
 	LD (LA70E+1),HL	; set Guard sprite
 	LD HL,NJAY	; Ninja Y address
 	LD A,(GARDY)	; get Guard Y
@@ -1762,28 +1789,22 @@ LA565:	LD A,$04	; state $04
 	LD (GARDST),A	; set Guard state = $04
 	JP LA6FF	; => Draw Guard on tilemap
 
-; Guard state = $09 ? - Guard is dead
-LA56D:	CP $09
-	JP NZ,LA57A
-	LD HL,LA0B5	; Sprite Ninja dead
+; Guard state = $09 - Guard is dead
+LA571:	LD HL,LA0B5	; Sprite Ninja dead
 	LD (LA70E+1),HL	; set Guard sprite
 	JP LA6FF	; => Draw Guard on tilemap
 
-; Guard state = $08 ?
-LA57A:	CP $08
-	JP NZ,LA5AA
-; Guard state = $08 - Punching ?
-	PUSH HL
-	LD HL,LA3B4	; Guard counter address
+; Guard state = $08 - Punching
+LA57E:	LD HL,LA3B4	; Guard counter address
 	DEC (HL)	; decrease Guard counter
-	POP HL
 	JP NZ,LA6FF	; => Draw Guard on tilemap
+	ld hl,GARDST	; Guard state address
 	LD (HL),$03	; set Guard state = walking state 3
 	LD HL,(GARDPOS)
 	LD DE,TLSCR2+64	; Tile screen 2 + 64
 	LD A,(GARDDIR)	; get Guard direction
-	CP $01		; right?
-	JP Z,LA599	; yes =>
+	or a
+	jp nz,LA599	; right =>
 	LD DE,TLSCR2+61	; Tile screen 2 + 61
 LA599:	ADD HL,DE
 	LD A,(HL)
@@ -1794,41 +1815,33 @@ LA599:	ADD HL,DE
 	LD (LA70E+1),HL	; set Guard sprite
 	JP LA6FF	; => Draw Guard on tilemap
 
-; Guard state = $05 ?
-LA5AA:	CP $05
-	JP NZ,LA5C7
 ; Guard state = $05 - jump
-	PUSH HL
-	LD HL,LA3B4	; Guard counter address
+LA5AE:	LD HL,LA3B4	; Guard counter address
 	DEC (HL)	; decrease Guard counter
-	POP HL
 	JP NZ,LA6FF	; => Draw Guard on tilemap
 	LD A,$03
 	LD (LA3B4),A	; set Guard counter value
+	ld hl,GARDST	; Guard state address
 	LD (HL),$06	; set Guard state = $06: jump-kick
 	LD HL,LD4DA	; Sprite Ninja/Guard jump-kick
 	LD (LA70E+1),HL	; set Guard sprite
 	JP LA6FF	; => Draw Guard on tilemap
 
-; Guard state = $06 ?
-LA5C7:	CP $06
-	JP NZ,LA5FC
 ; Guard state = $06 - jump-kick
-	PUSH HL
-	LD HL,LA3B4	; Guard counter address
+LA5CB:	LD HL,LA3B4	; Guard counter address
 	DEC (HL)	; decrease Guard counter
-	POP HL
 	JP NZ,LA6FF	; => Draw Guard on tilemap
 	LD A,$01
 	LD (LA3B4),A	; set Guard counter value
+	ld hl,GARDST	; Guard state address
 	LD (HL),$07	; set Guard state = $07: back to standing
 	LD HL,LD4B0	; Sprite Ninja/Guard jumping
 	LD (LA70E+1),HL	; set Guard sprite
 	LD HL,(GARDPOS)	; get Guard position in tilemap
 	LD DE,TLSCR2+65	; Tile screen 2 + 65
 	LD A,(GARDDIR)	; get Guard direction
-	CP $01		; right?
-	JP Z,LA5F1	; right =>
+	or a
+	jp nz,LA5F1	; right =>
 	LD DE,TLSCR2+60	; Tile screen 2 + 60
 LA5F1:	ADD HL,DE	; now HL = address in Ninja tile screen
 	LD A,(HL)	; get tile from Ninja screen
@@ -1837,15 +1850,11 @@ LA5F1:	ADD HL,DE	; now HL = address in Ninja tile screen
 	CALL NZ,LFA31	; not $FF => Decrease Energy by 10 + Sound
 	JP LA6FF	; => Draw Guard on tilemap
 
-; Guard state = $07 ?
-LA5FC:	CP $07
-	JP NZ,LA614
 ; Guard state = $07 - back to standing
-	PUSH HL
-	LD HL,LA3B4	; Guard counter address
+LA600:	LD HL,LA3B4	; Guard counter address
 	DEC (HL)	; decrease Guard counter
-	POP HL
 	JP NZ,LA6FF	; counter not zero => Draw Guard on tilemap
+	ld hl,GARDST	; Guard state address
 	LD (HL),$03	; set Guard state = walking phase 3
 	LD HL,LD486	; Sprite Ninja/Guard standing
 	LD (LA70E+1),HL	; set Guard sprite
@@ -1911,8 +1920,8 @@ LA67F:	LD HL,GARDX	; Guard X address
 ; Guard X < Ninja X
 LA68C:	LD B,A
 	LD A,(GARDDIR)	; get Guard direction
-	CP $01		; right?
-	JP Z,LA6AF	; right =>
+	or a
+	jp nz,LA6AF	; right =>
 	LD A,(GARDST)	; get Guard state
 	CP $04		; Guard state = $04 ?
 	JP Z,LA6A8
@@ -3068,7 +3077,7 @@ LB5C7:	CALL LAC44	; Reset Guard data and Dog data
 	LD (L9DEC+1),HL
 	LD HL,LB8D0	; Object procedure address for "Update Ninja on tilemap"
 	LD (LD285),HL	; set Object procedure for object #6 in Table of objects D256
-	LD (LB365+1),HL
+	;LD (LB365+1),HL	; NO NEED
 	LD A,$30	; '0'
 	LD HL,LAD52	; Pay value text address
 	LD B,$03
@@ -3102,7 +3111,7 @@ LB5F5:	LD (HL),A
 	LD A,$FA
 	LD (LB2FD),A
 	LD A,$C8
-	;LD A,$D2 ;DEBUG Granade
+	LD A,$D2 ;DEBUG Granade
 	LD (LBD79+1),A
 	CALL L7472
 	;DI
@@ -3140,7 +3149,7 @@ LB673:	LD DE,$0000	; !!MUT-ARG!! current Dog data address
 LB67B:	LD HL,LB263	; For first drawing entering the room, skip Dog and Guard tiles drawing
 	LD (LB1F9+1),HL
 	CALL LDE68	; Find record for the current room in DE84 table
-	CP $00
+	or a
 	JP NZ,LB68B	; found =>
 	LD HL,$0000
 LB68B:	LD A,(HL)	; get flag
@@ -3428,18 +3437,18 @@ LB891:	LD HL,LB84F	; NEAR item address
 	CP (HL)
 	JP Z,LB8B0
 	LD (HL),A
-	ld hl,$DB67	; NEAR screen address
+	ld hl,$FB67	; NEAR screen address
 	CALL DRITEM	; Draw NEAR/HELD item
 LB8B0:	LD HL,LB850	; HELD tile address
 	LD A,(LBD79+1)
 	CP (HL)
 	JP Z,LB8C9
 	LD (HL),A
-	CP $00
+	or a		; = 0 ?
 	JP Z,LB8C2
 	SUB $C6
 	rra	; SRL A
-LB8C2:	ld hl,$C167	; HELD screen address
+LB8C2:	ld hl,$E167	; HELD screen address
 	CALL DRITEM	; Draw NEAR/HELD item
 LB8C9:	XOR A
 	LD (LA39E),A
@@ -3593,7 +3602,7 @@ LB969:	ld hl,LA39F+6	; !!MUT-ARG!! object X address
 	dec (hl)	; decrement object X (IX+$06)
 	CP $03
 	JP Z,LB98D
-	CP $00
+	or a		; = 0 ?
 	JP Z,LB98D
 	CP $06
 	JP Z,LB98D
@@ -3726,7 +3735,7 @@ LBAF0:	LD HL,LBAB2	; Explosion counter address
 	CP $10		; bottom row?
 	JP NZ,LBB59
 	DEC B		; decrease height
-LBB59:	CP $00		; top row?
+LBB59:	or a		; top row?
 	JP NZ,LBB6A
 	DEC B		; decrease height
 	LD DE,$001E	; 30
@@ -3740,7 +3749,7 @@ LBB6A:	LD A,(LBA5A+6)
 	CP $1D		; right limit?
 	JP NZ,LBB72
 	DEC C		; decrease width
-LBB72:	CP $00		; left limit?
+LBB72:	or a		; left limit?
 	JP NZ,LBB7C
 	DEC C		; decrease width
 	INC HL
@@ -4155,8 +4164,8 @@ LBDAF:	JP LC226	; => Ninja standing
 LBDB2:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,TLSCR4+34	; Tile screen 4 + 34 for right
 	LD A,(NJADIR)	; get Ninja direction
-	CP $01		; right?
-	JP Z,LBDC2	; right =>
+	or a
+	jp nz,LBDC2	; right =>
 	LD DE,TLSCR4+31	; Tile screen 4 + 31 for left
 LBDC2:	ADD HL,DE	; now HL = address in Guard tilemap
 	LD A,(HL)	; get tile
@@ -4325,10 +4334,10 @@ LBF7B:	LD HL,TLSCR0+2	; Tile screen 0 + 2
 	ADD HL,DE
 	LD A,$64
 	CP (HL)
-	JP C,LC16E	; => Object procedure
+	JP C,LB8D0	; => Object procedure
 	INC HL
 	CP (HL)
-	JP C,LC16E	; => Update Ninja on tilemap
+	JP C,LB8D0	; => Update Ninja on tilemap
 	LD A,$03
 	LD (L7343),A	; set counter = 3
 	LD A,(NJADIR)	; get Ninja direction
@@ -4462,27 +4471,27 @@ LC13D:	LD A,(INPUTB)	; get Input bits
 	CP (HL)		; left?
 	JP Z,LC14B
 	DEC (HL)
-	JP LC16E	; => Update Ninja on tilemap
+	JP LB8D0	; => Update Ninja on tilemap
 ; Entry point
 LC14B:	LD HL,LC24B	; Movement handler address
 	LD DE,LD3DE	; Sprite Ninja/Guard walking 1
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
 LC154:	LD A,(INPUTB)	; get Input bits
 	and $01		; BIT 0,A	; check RIGHT bit
-	JP Z,LC16E
+	JP Z,LB8D0	; no => Update Ninja on tilemap
 	LD HL,NJADIR	; Ninja direction address
 	XOR A
 	CP (HL)		; left?
 	JP NZ,LC162
 	INC (HL)
-	JP LC16E	; => Update Ninja on tilemap
+	JP LB8D0	; => Update Ninja on tilemap
 ; Entry point
 LC162:	LD HL,LC1B6	; Movement handler address
 	LD (LB8CD+1),HL
 	LD HL,LD3DE	; Sprite Ninja/Guard walking 1
 	LD (NJASPR),HL	; set Ninja sprite address
 ; Entry point
-LC16E:	JP LB8D0	; => Update Ninja on tilemap
+	JP LB8D0	; => Update Ninja on tilemap
 
 ; Data block at C171
 ;LC171:	DEFB $3A,$40,$9C,$FE,$00,$CA,$26,$C2
@@ -4564,7 +4573,7 @@ LC239:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	CP (HL)
 	LD B,$02
 	CALL Z,NRJDEC	; => Decrease Energy by B
-	JP LC16E	; => Object procedure
+	JP LB8D0	; => Object procedure
 
 ; Movement handler: Ninja walking
 LC24B:	LD A,(NJAX)	; get Ninja X
@@ -4652,7 +4661,7 @@ LC2E8:	LD H,$00
 	INC DE
 	LD A,(HL)
 	LD (DE),A
-	JP LC16E	; => Object procedure
+	JP LB8D0	; => Object procedure
 
 ; Going to room at Right
 LC2FA:	XOR A
@@ -4786,8 +4795,8 @@ LC3D9:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 
 ; Read and process Input
 LC3EC:	CALL LBBDF	; Read Input
-	and $01		; BIT 0,A	; check RIGHT bit
-	JP Z,LC40E
+	rrca		; BIT 0,A	; check RIGHT bit
+	jp nc,LC40E
 
 ; Pressed RIGHT
 LC3F3:	LD HL,(NJAPOS)	; get Ninja position in tilemap
@@ -4805,9 +4814,9 @@ LC3F3:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	JP LC162
 
 ; Check if LEFT pressed
-LC40E:	ld a,(INPUTB)
-	and $02		; BIT 1,A	; check LEFT bit
-	JP Z,LC42C
+LC40E:			; A = INPUTB shifted right by 1
+	rrca		; BIT 1,A	; check LEFT bit
+	jp nc,LC42C
 
 ; Pressed LEFT
 LC412:	LD HL,(NJAPOS)	; get Ninja position in tilemap
@@ -4839,7 +4848,7 @@ LC433:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	DEC HL
 	CALL LC392
 	JP Z,LC447
-	JP LC495	; => Update Ninja on tilemap
+	JP LB8D0	; => Update Ninja on tilemap
 LC447:	LD A,(NJAY)	; get Ninja Y
 	or a		; top row?
 	JP Z,LC623	; yes => Going to room Up from current
@@ -4847,10 +4856,10 @@ LC447:	LD A,(NJAY)	; get Ninja Y
 	ADD HL,DE
 	LD A,$EA
 	CP (HL)
-	JP Z,LC495	; => Update Ninja on tilemap
+	JP Z,LB8D0	; => Update Ninja on tilemap
 	LD A,$FF
 	CP (HL)
-	JP Z,LC495	; => Update Ninja on tilemap
+	JP Z,LB8D0	; => Update Ninja on tilemap
 	LD HL,NJAY	; Ninja Y address
 	DEC (HL)	; one row up
 	LD HL,(NJAPOS)	; get Ninja position in tilemap
@@ -4882,7 +4891,7 @@ LC47B:	LD A,(NJAY)	; get Ninja Y
 	DEC HL
 	CALL LC392
 	JP Z,LC498	; => Move down one tile
-LC495:	JP LB8D0	; => Update Ninja on tilemap
+	JP LB8D0	; => Update Ninja on tilemap
 
 ; Move DOWN one tile
 LC498:	LD HL,NJAY	; Ninja Y address
@@ -4901,8 +4910,8 @@ LC4A7:	LD HL,L7343	; counter address
 	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD DE,TLSCR4+65	; value for right dir = Tile screen 4 + 65
 	LD A,(NJADIR)	; get Ninja direction
-	CP $01		; direction = right?
-	JP Z,LC4BE
+	or a
+	jp nz,LC4BE	; right =>
 	LD DE,TLSCR4+60	; value for left dir = Tile screen 4 + 60
 LC4BE:	ADD HL,DE
 	LD A,(HL)
@@ -4960,7 +4969,7 @@ LC525:	CALL LC57B	; Check for ??
 	JP NZ,LC533
 	LD HL,L7343	; counter address
 	DEC (HL)	; decrease counter
-	JP NZ,LC16E
+	JP NZ,LB8D0
 	JP LC538
 LC533:	LD B,$04
 	CALL NRJDEC	; Decrease Energy by B
@@ -5287,7 +5296,7 @@ LDF4C:	;PUSH DE
 	;CALL LDFD4	; Clear LASTK and do RST $38 once
 	;POP DE
 	;;LD A,($5C08)	; get LASTK
-	;CP $00
+	;or a
 	;JP NZ,LDF60	; key pressed => Main menu
 	;DEC DE
 	;LD A,D
@@ -5316,12 +5325,12 @@ LDF60:	ei
 	LD DE,$CD77
 	CALL PRSTR	; Print string "INFORMATION"
 ;
-	CALL LE04D	; Clear key buffer playing melody
+	;CALL LE04D	; Clear key buffer playing melody
 	CALL LDFDB	; Highlight Menu item
 	LD DE,$00D4
 LDF97:	PUSH DE
-	CALL LE440	; Play next note in melody
-	CALL LDFD4	; Clear LASTK and do RST $38 once
+	;CALL LE440	; Play next note in melody
+	;CALL LDFD4	; Clear LASTK and do RST $38 once
 	POP DE
 	call WaitNoInput
 	ld a,(MenuItem)
@@ -5439,11 +5448,11 @@ LDFCC:	;DEC DE
 ;LDFD1:	JP LBC3B
 
 ; Clear LASTK and do RST $38 once
-LDFD4:	XOR A
+LDFD4:	;XOR A
 	;LD ($5C08),A	; clear LASTK
 	;RST $38
-	NOP
-	RET
+	;NOP
+	;RET
 
 ; Highlight Menu item
 LDFDB:	LD HL,$CD8E
@@ -5464,51 +5473,12 @@ LDFEB:	LD (HL),$00
 	RET
 
 ; Clear key buffer playing melody
-LE04D:	CALL LE440	; Play next note in melody
-	CALL LDFD4	; Clear LASTK and do RST $38 once
+LE04D:	;CALL LE440	; Play next note in melody
+	;CALL LDFD4	; Clear LASTK and do RST $38 once
 	;LD A,($5C08)	; get LASTK
-	CP $00
-	RET Z
-	JP LE04D
-
-; Data block at E17D
-;LE17D:	DEFB $30,$EF,$01
-;	DEFB $31,$F7,$01
-;	DEFB $32,$F7,$02
-;	DEFB $33,$F7,$04
-;	DEFB $34,$F7,$08
-;	DEFB $35,$F7,$10
-;	DEFB $36,$EF,$10
-;	DEFB $37,$EF,$08
-;	DEFB $38,$EF,$04
-;	DEFB $39,$EF,$02
-;	DEFB $41,$FD,$01
-;	DEFB $42,$7F,$10
-;	DEFB $43,$FE,$08
-;	DEFB $44,$FD,$04
-;	DEFB $45,$FB,$04
-;	DEFB $46,$FD,$08
-;	DEFB $47,$FD,$10
-;	DEFB $48,$BF,$10
-;	DEFB $49,$DF,$04
-;	DEFB $4A,$BF,$08
-;	DEFB $4B,$BF,$04
-;	DEFB $4C,$BF,$02
-;	DEFB $4D,$7F,$04
-;	DEFB $4E,$7F,$08
-;	DEFB $4F,$DF,$02
-;	DEFB $50,$DF,$01
-;	DEFB $51,$FB,$01
-;	DEFB $52,$FB,$08
-;	DEFB $53,$FD,$02
-;	DEFB $54,$FB,$10
-;	DEFB $55,$DF,$08
-;	DEFB $56,$FE,$10
-;	DEFB $57,$FB,$02
-;	DEFB $58,$FE,$04
-;	DEFB $59,$DF,$10
-;	DEFB $5A,$FE,$02
-;	DEFB $20,$7F,$01
+	;CP $00
+	;RET Z
+	;JP LE04D
 
 ; Start Mission
 LE2A7:	CALL LDFE6	; Unhighlight Menu item
@@ -5597,6 +5567,7 @@ _10:	push bc
 	jp nz,_10
 ;
 LE374:
+	call ClearScreen
 	RET
 
 ; Play next note in melody
@@ -5641,100 +5612,100 @@ LE48A:	;DEC BC
 	;JP LE468
 
 ; Table for melodies
-LE494:	DEFW LE4AE
-LE496:	DEFW LE4AE
-	DEFW LE508
-LE49A:	DEFW LE53A
-	DEFW LE508
-	DEFW LE56C
-	DEFW LE4AE
-	DEFW LE4AE
-	DEFW LE508
-	DEFW LE53A
-	DEFW LE508
-	DEFW LE56C
-	DEFW LE5CA
+;LE494:	DEFW LE4AE
+;LE496:	DEFW LE4AE
+;	DEFW LE508
+;LE49A:	DEFW LE53A
+;	DEFW LE508
+;	DEFW LE56C
+;	DEFW LE4AE
+;	DEFW LE4AE
+;	DEFW LE508
+;	DEFW LE53A
+;	DEFW LE508
+;	DEFW LE56C
+;	DEFW LE5CA
 
 ; Melodies
-LE4AE:	DEFB $9A,$08,$19,$00	; Melody
-	DEFB $9A,$08,$19,$00
-	DEFB $9A,$08,$31,$00
-	DEFB $8C,$03,$75,$00
-	DEFB $9A,$08,$19,$00
-	DEFB $8C,$03,$75,$00
-	DEFB $9A,$08,$19,$00
-	DEFB $8C,$03,$75,$00
-	DEFB $3E,$04,$62,$00
-	DEFB $C6,$04,$57,$00
-	DEFB $9A,$08,$19,$00
-	DEFB $9A,$08,$19,$00
-	DEFB $9A,$08,$31,$00
-	DEFB $8C,$03,$75,$00
-	DEFB $9A,$08,$19,$00
-	DEFB $8C,$03,$75,$00
-	DEFB $9A,$08,$19,$00
-	DEFB $8C,$03,$75,$00
-	DEFB $3E,$04,$31,$00
-	DEFB $C6,$04,$2C,$00
-	DEFB $B3,$05,$25,$00
-	DEFB $6A,$06,$21,$00
-	DEFB $00,$FE
-LE508:	DEFB $9A,$08,$19,$00	; Melody
-	DEFB $9A,$08,$19,$00
-	DEFB $9A,$08,$31,$00
-	DEFB $CA,$02,$93,$00
-	DEFB $9A,$08,$19,$00
-	DEFB $CA,$02,$93,$00
-	DEFB $9A,$08,$19,$00
-	DEFB $CA,$02,$93,$00
-	DEFB $9A,$08,$19,$00
-	DEFB $CA,$02,$93,$00
-	DEFB $26,$03,$83,$00
-	DEFB $8C,$03,$75,$00
-	DEFB $00,$FE
-LE53A:	DEFB $9A,$08,$19,$00	; Melody
-	DEFB $9A,$08,$19,$00
-	DEFB $9A,$08,$31,$00
-	DEFB $CA,$02,$93,$00
-	DEFB $9A,$08,$19,$00
-	DEFB $CA,$02,$93,$00
-	DEFB $9A,$08,$19,$00
-	DEFB $CA,$02,$93,$00
-	DEFB $26,$03,$41,$00
-	DEFB $8C,$03,$3A,$00
-	DEFB $3E,$04,$31,$00
-	DEFB $C6,$04,$2C,$00
-	DEFB $00,$FE
-LE56C:	DEFB $9A,$08,$19,$00	; Melody
-	DEFB $9A,$08,$19,$00
-	DEFB $9A,$08,$31,$00
-	DEFB $CA,$02,$93,$00
-	DEFB $9A,$08,$19,$00
-	DEFB $CA,$02,$93,$00
-	DEFB $9A,$08,$19,$00
-	DEFB $CA,$02,$93,$00
-	DEFB $54,$02,$57,$00
-	DEFB $79,$02,$52,$00
-	DEFB $CA,$02,$49,$00
-	DEFB $26,$03,$41,$00
-	DEFB $54,$02,$57,$00
-	DEFB $C4,$03,$37,$00
-	DEFB $3E,$04,$31,$00
-	DEFB $C4,$03,$37,$00
-	DEFB $57,$03,$3E,$00
-	DEFB $C4,$03,$37,$00
-	DEFB $3E,$04,$31,$00
-	DEFB $C6,$04,$2C,$00
-	DEFB $B3,$05,$25,$00
-	DEFB $6A,$06,$21,$00
-	DEFB $A6,$07,$1C,$00
-	DEFB $00,$FE
-LE5CA:	DEFB $9A,$08,$31,$00	; Melody
-	DEFB $00,$FF,$00,$FF
-	DEFB $00,$FF,$00,$FF
-	DEFB $00,$FF,$00,$FF
-	DEFB $00,$FF
-LE5DC:	DEFB $00,$FD	; Melody end/restart
+;LE4AE:	DEFB $9A,$08,$19,$00	; Melody
+;	DEFB $9A,$08,$19,$00
+;	DEFB $9A,$08,$31,$00
+;	DEFB $8C,$03,$75,$00
+;	DEFB $9A,$08,$19,$00
+;	DEFB $8C,$03,$75,$00
+;	DEFB $9A,$08,$19,$00
+;	DEFB $8C,$03,$75,$00
+;	DEFB $3E,$04,$62,$00
+;	DEFB $C6,$04,$57,$00
+;	DEFB $9A,$08,$19,$00
+;	DEFB $9A,$08,$19,$00
+;	DEFB $9A,$08,$31,$00
+;	DEFB $8C,$03,$75,$00
+;	DEFB $9A,$08,$19,$00
+;	DEFB $8C,$03,$75,$00
+;	DEFB $9A,$08,$19,$00
+;	DEFB $8C,$03,$75,$00
+;	DEFB $3E,$04,$31,$00
+;	DEFB $C6,$04,$2C,$00
+;	DEFB $B3,$05,$25,$00
+;	DEFB $6A,$06,$21,$00
+;	DEFB $00,$FE
+;LE508:	DEFB $9A,$08,$19,$00	; Melody
+;	DEFB $9A,$08,$19,$00
+;	DEFB $9A,$08,$31,$00
+;	DEFB $CA,$02,$93,$00
+;	DEFB $9A,$08,$19,$00
+;	DEFB $CA,$02,$93,$00
+;	DEFB $9A,$08,$19,$00
+;	DEFB $CA,$02,$93,$00
+;	DEFB $9A,$08,$19,$00
+;	DEFB $CA,$02,$93,$00
+;	DEFB $26,$03,$83,$00
+;	DEFB $8C,$03,$75,$00
+;	DEFB $00,$FE
+;LE53A:	DEFB $9A,$08,$19,$00	; Melody
+;	DEFB $9A,$08,$19,$00
+;	DEFB $9A,$08,$31,$00
+;	DEFB $CA,$02,$93,$00
+;	DEFB $9A,$08,$19,$00
+;	DEFB $CA,$02,$93,$00
+;	DEFB $9A,$08,$19,$00
+;	DEFB $CA,$02,$93,$00
+;	DEFB $26,$03,$41,$00
+;	DEFB $8C,$03,$3A,$00
+;	DEFB $3E,$04,$31,$00
+;	DEFB $C6,$04,$2C,$00
+;	DEFB $00,$FE
+;LE56C:	DEFB $9A,$08,$19,$00	; Melody
+;	DEFB $9A,$08,$19,$00
+;	DEFB $9A,$08,$31,$00
+;	DEFB $CA,$02,$93,$00
+;	DEFB $9A,$08,$19,$00
+;	DEFB $CA,$02,$93,$00
+;	DEFB $9A,$08,$19,$00
+;	DEFB $CA,$02,$93,$00
+;	DEFB $54,$02,$57,$00
+;	DEFB $79,$02,$52,$00
+;	DEFB $CA,$02,$49,$00
+;	DEFB $26,$03,$41,$00
+;	DEFB $54,$02,$57,$00
+;	DEFB $C4,$03,$37,$00
+;	DEFB $3E,$04,$31,$00
+;	DEFB $C4,$03,$37,$00
+;	DEFB $57,$03,$3E,$00
+;	DEFB $C4,$03,$37,$00
+;	DEFB $3E,$04,$31,$00
+;	DEFB $C6,$04,$2C,$00
+;	DEFB $B3,$05,$25,$00
+;	DEFB $6A,$06,$21,$00
+;	DEFB $A6,$07,$1C,$00
+;	DEFB $00,$FE
+;LE5CA:	DEFB $9A,$08,$31,$00	; Melody
+;	DEFB $00,$FF,$00,$FF
+;	DEFB $00,$FF,$00,$FF
+;	DEFB $00,$FF,$00,$FF
+;	DEFB $00,$FF
+;LE5DC:	DEFB $00,$FD	; Melody end/restart
 
 ;----------------------------------------------------------------------------
 
@@ -5842,8 +5813,7 @@ LFA28:	LD B,$01
 ; Decrease Energy by B + Sound
 LFA31:	CALL NRJDEC	; Decrease Energy by B
 	LD B,$01
-	CALL LF9A1	; Sound
-	RET
+	jp LF9A1	; Sound
 
 ;----------------------------------------------------------------------------
 
