@@ -1292,7 +1292,7 @@ ENDIF
 	LD A,(NRJLO)	; get Energy lower
 	CP $01
 	JP NZ,L9DF1
-L9DEC:	JP LBEAA	; Energy is out => Saboteur dead
+L9DEC:	JP LBEAA	; !!MUT-CMD!! Energy is out => Saboteur dead
 L9DF1:	dec b
 	jp nz,NRJDEC	; continue loop by B
 	RET
@@ -1301,8 +1301,6 @@ L9DF1:	dec b
 LA0DF:	LD HL,LA1E1	; Guard data address
 ; Initialize a guard, then Standard room initialization
 LA0E2:	CALL LB40A	; Initialize a guard
-;
-LA0E5:	JP LB422	; Standard room initialization
 
 ; Room 7DA9 initialization
 LA0E8:	LD HL,LA1E7	; Guard data address
@@ -2339,43 +2337,39 @@ LB1D5:	LD H,$00
 	or a
 	jp z,DRNJA_LT
 ; Draw Ninja tile, direction right - no mirror
-LB1E4:	INC HL
-	LD A,(DE)	; get byte from tile buffer
+LB1E4:	LD A,(DE)	; get byte from tile buffer
 	LD C,A
 	LD A,(HL)	; get byte from tile data (mask)
 	AND C		; AND with byte from the buffer - apply the mask
 	LD C,A
-	DEC HL
+	inc hl
 	LD A,(HL)	; get byte from tile data (pixels)
 	OR C		; OR with the byte from buffer - apply pixels
-	INC HL
-	INC HL
 	LD (DE),A
+	inc hl
 	INC DE
 	dec b
 	jp nz,LB1E4	; loop for all 8 bytes
 	jp LB1F9
 ; Draw Ninja tile, direction left - mirror tiles
 DRNJA_LT:
-	INC HL
 	LD A,(DE)	; get byte from tile buffer
 	LD C,A
 	LD A,(HL)	; get byte from tile data (mask)
 	CALL MirrorByte	; Mirror byte if needed
 	AND C		; AND with byte from the buffer - apply the mask
 	LD C,A
-	DEC HL
+	inc hl
 	LD A,(HL)	; get byte from tile data (pixels)
 	CALL MirrorByte	; Mirror byte if needed
 	OR C		; OR with the byte from buffer - apply pixels
-	INC HL
-	INC HL
 	LD (DE),A
+	inc hl
 	INC DE
 	dec b
 	jp nz,DRNJA_LT	; loop for all 8 bytes
 ;
-LB1F9:	JP LB1FC
+LB1F9:	JP LB1FC	; !!MUT-ARG!!
 
 ; Process Tile screen 3 tile - Dog
 LB1FC:	ld hl,(L7238)	; get offset
@@ -2398,37 +2392,33 @@ LB1FC:	ld hl,(L7238)	; get offset
 	or a
 	jp z,DRDOG_LT
 ; Draw Dog tile, direction right - no mirror
-LB218:	INC HL
-	LD A,(DE)	; get byte from tile buffer
+LB218:	LD A,(DE)	; get byte from tile buffer
 	LD C,A
 	LD A,(HL)
 	AND C
 	LD C,A
-	DEC HL
+	inc hl
 	LD A,(HL)
 	OR C
-	INC HL
-	INC HL
 	LD (DE),A
+	inc hl
 	INC DE
 	dec b
 	jp nz,LB218
 	jp LB230
 ; Draw Dog tile, direction left - mirror tiles
 DRDOG_LT:
-	INC HL
 	LD A,(DE)	; get byte from tile buffer
 	LD C,A
 	LD A,(HL)
 	CALL MirrorByte
 	AND C
 	LD C,A
-	DEC HL
+	inc hl
 	LD A,(HL)
 	CALL MirrorByte
 	OR C
-	INC HL
-	INC HL
+	inc hl
 	LD (DE),A
 	INC DE
 	dec b
@@ -2455,38 +2445,34 @@ LB230:	ld hl,(L7238)	; get offset
 	or a
 	jp z,DRGARD_LT
 ; Draw Guard tile, direction right - no mirror
-LB24B:	INC HL
-	LD A,(DE)	; get byte from tile buffer
+LB24B:	LD A,(DE)	; get byte from tile buffer
 	LD C,A
 	LD A,(HL)	; get byte from tile data (mask)
 	AND C		; AND with byte from buffer - masking
 	LD C,A
-	DEC HL
+	inc hl
 	LD A,(HL)	; get byte from tile data (pixels)
 	OR C		; OR with byte from buffer
-	INC HL
-	INC HL
 	LD (DE),A	; save result byte to tile buffer
+	inc hl
 	INC DE
 	dec b
 	jp nz,LB24B	; loop for all 8 bytes
 	jp LB263
 ; Draw Guard tile, direction left - mirror tiles
 DRGARD_LT:
-	INC HL
 	LD A,(DE)	; get byte from tile buffer
 	LD C,A
 	LD A,(HL)	; get byte from tile data (mask)
 	CALL MirrorByte
 	AND C		; AND with byte from buffer - masking
 	LD C,A
-	DEC HL
+	inc hl
 	LD A,(HL)	; get byte from tile data (pixels)
 	CALL MirrorByte
 	OR C		; OR with byte from buffer
-	INC HL
-	INC HL
 	LD (DE),A	; save result byte to tile buffer
+	inc hl
 	INC DE
 	dec b
 	jp nz,DRGARD_LT	; loop for all 8 bytes
@@ -2502,12 +2488,12 @@ LB263:	ld hl,(L7238)	; get offset
 	LD L,A
 	LD A,(LB147)	; get Background tile attribute
 	LD (LB146),A	; set it as current tile attribute
-	PUSH HL
+	ld d,h
+	ld e,l
 	ADD HL,HL
 	ADD HL,HL
 	ADD HL,HL
 	ADD HL,HL	; * 16
-	POP DE
 	ADD HL,DE	; * 17
 	LD DE,LD600	; Front tiles base address
 	ADD HL,DE	; now HL = address of tile data
@@ -3243,6 +3229,7 @@ LB706:	DEFW LB38F	; #00: Put 3x3 tiles L7C21; params: 2 bytes (address)
 
 ; Finish room initialization
 ; Called to finish room initialization from room initialization procedure
+LA0E5:			; redirect - Standard room initialization
 LB422:			; redirect - Standard room initialization (for 60 rooms)
 LB724:
 	LD HL,TLSCR1	; Tile screen 1 start address
@@ -3873,7 +3860,7 @@ LBBCB:	LD (HL),A	; set the flag
 	RET
 
 ; Movement handler: Ninja punching
-LBBD4:	CALL LBBDF	; Read Input
+LBBD4:	call ReadInput
 	and $10		; BIT 4,A	; check FIRE bit
 	JP NZ,LB8D0	; => Update Ninja on tilemap
 	JP LC226	; => Ninja standing
@@ -3881,9 +3868,9 @@ LBBD4:	CALL LBBDF	; Read Input
 ; Game controls
 ;   7   6   5   4   3   2   1   0
 ;               Fr  Up  Dn  Lt  Rt
-
 ; Read Input, store to INPUTB and return in A
-LBBDF:	PUSH HL
+ReadInput:
+	PUSH HL
 	xor a
 	ld (_ReadInp_3+1),a
 	ld hl,ReadInput_map  ; Point HL at the keyboard list
@@ -3925,13 +3912,13 @@ ReadInput_map:                        ; 7   6   5   4   3   2   1   0
   DB $10,$10,$00,$00,$04,$08,$02,$01  ; Fr  Fr  --  --  Dn  Up  Lt  Rt
 
 WaitAnyInput:
-	call LBBDF	; Read input
+	call ReadInput
 	and $1F		; mask for 5 bits
 	ret nz
 	jp WaitAnyInput
 
 WaitNoInput:
-	call LBBDF	; Read input
+	call ReadInput
 	and $1F		; mask for 5 bits
 	ret z
 	jp WaitNoInput
@@ -4034,7 +4021,7 @@ LBCB6:	CALL LC5A3	; Check for falling
 	CP (HL)
 	JP Z,LBCC4
 	DEC (HL)
-LBCC4:	CALL LBBDF	; Read Input
+LBCC4:	call ReadInput
 	and $10		; BIT 4,A	; check FIRE bit
 	JP Z,LBDDD
 
@@ -4156,9 +4143,6 @@ LBDA2:	LD A,B
 	CALL LF9F9
 	LD DE,LD504	; Sprite Ninja/Guard punching
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
-
-; Ninja standing (redirect)
-LBDAF:	JP LC226	; => Ninja standing
 
 ; ?? Ninja action?
 LBDB2:	LD HL,(NJAPOS)	; get Ninja position in tilemap
@@ -4344,11 +4328,11 @@ LBF7B:	LD HL,TLSCR0+2	; Tile screen 0 + 2
 	or a		; left?
 	LD A,(INPUTB)	; get Input bits
 	JP Z,LBFA0
-	and $01		; BIT 0,A	; check RIGHT bit
-	CALL NZ,LC4E8
+	rrca		; BIT 0,A	; check RIGHT bit
+	call c,LC4E8	; yes =>
 	JP LBFA5
 LBFA0:	and $02		; BIT 1,A	; check LEFT bit
-	CALL NZ,LC4E8
+	CALL NZ,LC4E8	; yes =>
 LBFA5:	LD HL,LC339	; Movement handler: Ninja jumping
 	LD A,$02
 	LD (L7343),A	; set counter = 2
@@ -4358,7 +4342,6 @@ LBFA5:	LD HL,LC339	; Movement handler: Ninja jumping
 LBFB0:	LD (LB8CD+1),HL
 	ex de,hl
 	ld (NJASPR),hl	; set Ninja sprite address = DE
-	;ex de,hl
 	JP LB8D0	; => Update Ninja on tilemap
 
 ; Routine at BFBA
@@ -4477,8 +4460,8 @@ LC14B:	LD HL,LC24B	; Movement handler address
 	LD DE,LD3DE	; Sprite Ninja/Guard walking 1
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
 LC154:	LD A,(INPUTB)	; get Input bits
-	and $01		; BIT 0,A	; check RIGHT bit
-	JP Z,LB8D0	; no => Update Ninja on tilemap
+	rrca		; BIT 0,A	; check RIGHT bit
+	jp nc,LB8D0	; no => Update Ninja on tilemap
 	LD HL,NJADIR	; Ninja direction address
 	XOR A
 	CP (HL)		; left?
@@ -4525,9 +4508,9 @@ LC1DA:	LD DE,$FFE3	; -29
 	LD A,$64
 	CP (HL)
 	JP NC,LC1EE
-	CALL LBBDF	; Read Input
-	and $01		; BIT 0,A	; check RIGHT bit
-	JP Z,LC226	; => Ninja standing
+	call ReadInput
+	rrca		; BIT 0,A	; check RIGHT bit
+	jp nc,LC226	; no => Ninja standing
 	JP LB8D0	; => Update Ninja on tilemap
 LC1EE:	LD DE,$003B	; +59
 	ADD HL,DE
@@ -4552,17 +4535,19 @@ LC20D:	LD HL,NJAX	; Ninja X address
 	LD (NJAPOS),HL	; set Ninja position in tilemap
 	CALL LC5A3	; Check for falling
 	JP Z,LC643	; => Ninja falling
-	CALL LBBDF	; Read Input
-	and $01		; BIT 0,A	; check RIGHT bit
-	JP NZ,LC2BB
+	call ReadInput
+	rrca		; BIT 0,A	; check RIGHT bit
+	jp c,LC2BB	; yes =>
 
-; Ninja standing
+; Switch Ninja to standing
+LBDAF:			; (redirect) Ninja standing
+LC5A0:			; (redirect)
 LC226:	LD HL,LBC55	; Movement handler: Ninja standing
 	LD DE,LD486	; Sprite Ninja/Guard standing
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
 
 ; Movement handler (B8CE handler): Ninja sitting
-LC22F:	CALL LBBDF	; Read Input
+LC22F:	call ReadInput
 	and $04		; BIT 2,A	; check DOWN bit
 	JP NZ,LC239	; still pressed =>
 	JP LC226	; DOWN key released => stand up
@@ -4597,7 +4582,7 @@ LC26F:	LD DE,$FFE1	; -31
 	LD A,$64
 	CP (HL)
 	JP NC,LC283
-	CALL LBBDF	; Read Input
+	call ReadInput
 	and $02		; BIT 1,A	; check LEFT bit
 	JP Z,LC226	; => Ninja standing
 	JP LB8D0	; => Update Ninja on tilemap
@@ -4624,7 +4609,7 @@ LC2A2:	LD HL,NJAX	; Ninja X address
 	LD (NJAPOS),HL	; set Ninja position in tilemap
 	CALL LC5A3	; Check for falling
 	JP Z,LC643	; => Ninja falling
-	CALL LBBDF	; Read Input
+	call ReadInput
 	and $02		; BIT 1,A	; check LEFT bit
 	JP Z,LC226	; => Ninja standing
 
@@ -4794,9 +4779,9 @@ LC3D9:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	JP NZ,LC226	; not ladder => Ninja standing
 
 ; Read and process Input
-LC3EC:	CALL LBBDF	; Read Input
+LC3EC:	call ReadInput
 	rrca		; BIT 0,A	; check RIGHT bit
-	jp nc,LC40E
+	jp nc,LC40E	; no =>
 
 ; Pressed RIGHT
 LC3F3:	LD HL,(NJAPOS)	; get Ninja position in tilemap
@@ -5032,9 +5017,6 @@ LC59A:	ADD HL,DE
 	XOR A
 	CP C		; now Z=0: falling, Z=1: not falling
 	RET
-
-; Switch Ninja to standing (redirect)
-LC5A0:	JP LC226	; => Ninja standing
 
 ; Check for falling
 LC5A3:	LD HL,(NJAPOS)	; get Ninja position in tilemap
@@ -5344,7 +5326,7 @@ MENUL:
 	ld hl,$CDAE
 	ld (LDFDB+1),hl
 	call LDFDB	; Highlight Menu item
-_00:	call LBBDF	; Read input
+_00:	call ReadInput
 	rrca		; Right?
 	jp nc,_10
 	ld a,(LEVED)
@@ -5376,7 +5358,7 @@ _30:	rrca		; Up - do nothing
 MENUS:	ld hl,$CD8E
 	ld (LDFDB+1),hl
 	call LDFDB	; Highlight Menu item
-_00:	call LBBDF	; Read input
+_00:	call ReadInput
 	rrca		; Right - do nothing
 	rrca		; Left - do nothing
 	rrca		; Down ?
@@ -5400,7 +5382,7 @@ MENUI:
 	ld hl,$CD6E
 	ld (LDFDB+1),hl
 	call LDFDB	; Highlight Menu item
-_00:	call LBBDF	; Read input
+_00:	call ReadInput
 	rrca		; Right - do nothing
 	rrca		; Left - do nothing
 	rrca		; Down - do nothing
@@ -5557,7 +5539,7 @@ LE343:	ex de,hl
 ; Wait for any key pressed, or time passed
 	ld bc,$1800
 _10:	push bc
-	call LBBDF	; Read input
+	call ReadInput
 	pop bc
 	and $1F		; mask for 5 bits
 	jp nz,LE374
