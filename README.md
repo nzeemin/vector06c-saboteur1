@@ -11,8 +11,8 @@ Screenshot of the ported version:
 
 ## Tools for the tools folder
 
- - `pasmo.exe` cross-assembler
-   http://pasmo.speccy.org/
+ - `sjasmplus.exe` cross-assembler
+   https://github.com/z00m128/sjasmplus
 
  - `salvador.exe` ZX0 compressor
    https://github.com/emmanuel-marty/salvador/releases

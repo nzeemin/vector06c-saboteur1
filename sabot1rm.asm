@@ -1,53 +1,53 @@
 
-MACRO	DEFRT00, addr
-	DEFB	$00
-	DEFW	addr
-ENDM
-MACRO	DEFRT01, count,tile,addr
-	DEFB	$01,count,tile
-	DEFW	addr
-ENDM
-MACRO	DEFRT02, count,tile,addr
-	DEFB	$02,count,tile
-	DEFW	addr
-ENDM
-MACRO	DEFRT03, tile,wid,hei,addr
-	DEFB	$03,tile,wid,hei
-	DEFW	addr
-ENDM
-MACRO	DEFRT04, tile
-	DEFB	$04,tile
-ENDM
-MACRO	DEFRT05, wid,hei,src,addr
-	DEFB	$05,wid,hei
-	DEFW	src,addr
-ENDM
-MACRO	DEFRT06, tile,count,addr
-	DEFB	$06,tile,count
-	DEFW	addr
-ENDM
-MACRO	DEFRT07, tile,count,addr
-	DEFB	$07,tile,count
-	DEFW	addr
-ENDM
-MACRO	DEFRT08, tile,count,addr
-	DEFB	$08,tile,count
-	DEFW	addr
-ENDM
-MACRO	DEFRT09, tile,count,addr
-	DEFB	$09,tile,count
-	DEFW	addr
-ENDM
-MACRO	DEFRT0C, src,size,count,addr
-	DEFB	$0C
-	DEFW	src
-	DEFB	size,count
-	DEFW	addr
-ENDM
-MACRO	DEFRT0E, tile,addr
-	DEFB	$0E,tile
-	DEFW	addr
-ENDM
+	MACRO	DEFRT00 addr
+		DEFB	$00
+		DEFW	addr
+	ENDM
+	MACRO	DEFRT01 count,tile,addr
+		DEFB	$01,count,tile
+		DEFW	addr
+	ENDM
+	MACRO	DEFRT02 count,tile,addr
+		DEFB	$02,count,tile
+		DEFW	addr
+	ENDM
+	MACRO	DEFRT03 tile,wid,hei,addr
+		DEFB	$03,tile,wid,hei
+		DEFW	addr
+	ENDM
+	MACRO	DEFRT04 tile
+		DEFB	$04,tile
+	ENDM
+	MACRO	DEFRT05 wid,hei,src,addr
+		DEFB	$05,wid,hei
+		DEFW	src,addr
+	ENDM
+	MACRO	DEFRT06 tile,count,addr
+		DEFB	$06,tile,count
+		DEFW	addr
+	ENDM
+	MACRO	DEFRT07 tile,count,addr
+		DEFB	$07,tile,count
+		DEFW	addr
+	ENDM
+	MACRO	DEFRT08 tile,count,addr
+		DEFB	$08,tile,count
+		DEFW	addr
+	ENDM
+	MACRO	DEFRT09 tile,count,addr
+		DEFB	$09,tile,count
+		DEFW	addr
+	ENDM
+	MACRO	DEFRT0C src,size,count,addr
+		DEFB	$0C
+		DEFW	src
+		DEFB	size,count
+		DEFW	addr
+	ENDM
+	MACRO	DEFRT0E tile,addr
+		DEFB	$0E,tile
+		DEFW	addr
+	ENDM
 
 ; Room 791E (room with pier)
 L791E:	DEFW	LB446	; Room procedure

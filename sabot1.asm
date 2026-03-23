@@ -4,7 +4,8 @@
 
 ;----------------------------------------------------------------------------
 
-	org	SABOTCOD0_END
+	OUTPUT "sabot1.bin"
+	ORG	SABOTCOD0_END
 
 	JP	LF9E7
 
@@ -155,9 +156,8 @@ MIRROR:	DEFB	$00,$80,$40,$C0,$20,$A0,$60,$E0,$10,$90,$50,$D0,$30,$B0,$70,$F0
 	DEFB	$0B,$8B,$4B,$CB,$2B,$AB,$6B,$EB,$1B,$9B,$5B,$DB,$3B,$BB,$7B,$FB
 	DEFB	$07,$87,$47,$C7,$27,$A7,$67,$E7,$17,$97,$57,$D7,$37,$B7,$77,$F7
 	DEFB	$0F,$8F,$4F,$CF,$2F,$AF,$6F,$EF,$1F,$9F,$5F,$DF,$3F,$BF,$7F,$FF
-IF (MIRROR AND $FF) NE 0		; Make sure the Mirror table properly aligned
-	.ERROR "Mirror table address should be aligned so lower byte is 0!"
-ENDIF
+	; Make sure the Mirror table properly aligned, so lower byte is 0
+	ASSERT (MIRROR AND $FF) == 0
 ;
 ; Screen addresses for every 17 rows, used for Explosion drawing
 LBAB3:	DEFW $C0FF,$C0F7,$C0EF,$C0E7
@@ -165,9 +165,8 @@ LBAB3:	DEFW $C0FF,$C0F7,$C0EF,$C0E7
 	DEFW $C0BF,$C0B7,$C0AF,$C0A7
 	DEFW $C09F,$C087,$C07F,$C077
 	DEFW $C06F
-IF (LBAB3 AND $FF) NE 0		; Make sure the LBAB3 table properly aligned
-	.ERROR "LBAB3 table address should be aligned so lower byte is 0!"
-ENDIF
+	; Make sure the LBAB3 table properly aligned, so lower byte is 0
+	ASSERT (LBAB3 AND $FF) == 0
 
 ; Table of game screen rows addresses, 10 rows, for auto-gun drawings
 LA747:	DEFW $C1E2,$C1DA,$C1D2,$C1CA
@@ -669,21 +668,21 @@ SINFO:	DEFB 18
 
 ; LDIR command replacement, but for B as counter (BC in full LDIR)
 LDIR_B:
-_loop:	ld a,(hl)
+.loop:	ld a,(hl)
 	ld (de),a
 	inc hl
 	inc de
 	dec b
-	jp nz,_loop
+	jp nz,.loop
 	ret
 ; LDDR command replacement, but for B as counter (BC in full LDDR)
 LDDR_B:
-_loop:	ld a,(hl)
+.loop:	ld a,(hl)
 	ld (de),a
 	dec hl
 	dec de
 	dec b
-	jp nz,_loop
+	jp nz,.loop
 	ret
 
 ;----------------------------------------------------------------------------
@@ -1051,18 +1050,18 @@ DRITEM:	push hl		; save screen address
 	LD D,(HL)
 	pop hl		; restore screen address
 	LD C,24		; 24 lines
-_74E4:	push hl
+.l10:	push hl
 	LD B,4		; 4 in line
-_74E7:	LD A,(DE)
+.l20:	LD A,(DE)
 	LD (HL),A	; put to screen
 	INC DE
 	inc h		; one to right
 	dec b
-	jp nz,_74E7
+	jp nz,.l20
 	pop hl
 	dec l		; line down
 	DEC C
-	JP NZ,_74E4
+	JP NZ,.l10
 	RET
 
 ;----------------------------------------------------------------------------
@@ -1282,9 +1281,9 @@ L9DD0:	LD (LB673+1),HL	; save current Dog data address
 
 ; Decrease Energy by B
 NRJDEC:	RET		; !!MUT-CMD!! $C5 PUSH BC or $C9 RET
-IF CHELTH EQ 0		; Cheat code for no damage
+  IF CHELTH == 0	; Cheat code for no damage
 	CALL L749E	; Decrease Energy
-ENDIF
+  ENDIF
 	POP BC
 	LD A,(NRJ)	; get Energy
 	CP $04		; Energy = MIN ?
@@ -2149,12 +2148,12 @@ LACFB:	LD A,(HL)
 	inc d
 	ld a,d
 	cp $E0
-	jp nz,_10
+	jp nz,.l10
 	ld d,$C0
 	ld a,e
 	sub $8
 	ld e,a
-_10:	POP HL
+.l10:	POP HL
 	DEC C
 	JP NZ,LACF7
 	EX DE,HL
@@ -2198,10 +2197,10 @@ LAEDA:	ld de,FONT-256	; !!MUT-ARG!! font address
 	POP DE
 	PUSH DE
 	xor a
-	REPT 7
+  REPT 7
 	ld (de),a
 	dec e		; next screen line
-	ENDM
+  ENDR
 	ld (de),a
 	POP DE
 	PUSH DE
@@ -2532,131 +2531,131 @@ LB293:
 ; Strategy 1: pixels to 1st plane, clear 2nd plane - blue / black
 DRTILE_1:
 	LD HL,LB13E	; Tile buffer address
-	REPT 7
+  REPT 7
 	LD A,(hl)	; get byte from the buffer
 	LD (de),A	; put byte on the screen
 	inc hl
 	dec e		; next line
-	ENDM
+  ENDR
 	LD a,(hl)	; get byte from the buffer
 	LD (de),a	; put byte on the screen
 	ld a,d
 	add a,$20	; switch to 2nd plane
 	ld d,a
 	xor a
-	REPT 7
+  REPT 7
 	ld (de),a
 	inc e		; prev line
-	ENDM
+  ENDR
 	ld (de),a
 	jp LB2A6
 ; Strategy 2: clear 1nd plane, pixels to 2nd plane - yellow / black
 DRTILE_2:
 	xor a
-	REPT 7
+  REPT 7
 	ld (de),a
 	dec e		; next line
-	ENDM
+  ENDR
 	ld (de),a
 	ld a,d
 	add a,$20	; switch to 2nd plane
 	ld d,a
 	LD HL,LB13E+7	; Tile buffer address
-	REPT 7
+  REPT 7
 	LD a,(hl)	; get byte from the buffer
 	LD (de),a	; put byte on the screen
 	dec hl
 	inc e		; prev line
-	ENDM
+  ENDR
 	LD a,(hl)	; get byte from the buffer
 	LD (de),a	; put byte on the screen
 	jp LB2A6
 ; Strategy 3: pixels to 1st and 2nd plane - red / black
 DRTILE_3:
 	LD HL,LB13E	; Tile buffer address
-	REPT 7
+  REPT 7
 	LD A,(hl)	; get byte from the buffer
 	LD (de),A	; put byte on the screen
 	inc hl
 	dec e		; next line
-	ENDM
+  ENDR
 	LD a,(hl)	; get byte from the buffer
 	LD (de),a	; put byte on the screen
 	ld a,d
 	add a,$20	; switch to 2nd plane
 	ld d,a
-	REPT 7
+  REPT 7
 	LD a,(hl)	; get byte from the buffer
 	LD (de),a	; put byte on the screen
 	dec hl
 	inc e		; prev line
-	ENDM
+  ENDR
 	LD a,(hl)	; get byte from the buffer
 	LD (de),a	; put byte on the screen
 	jp LB2A6
 ; Strategy 4: $FF to 1st plane, pixels to 2nd plane - red / blue
 DRTILE_4:
 	ld a,$FF
-	REPT 7
+  REPT 7
 	ld (de),a
 	dec e		; next line
-	ENDM
+  ENDR
 	ld (de),a
 	ld a,d
 	add a,$20	; switch to 2nd plane
 	ld d,a
 	LD HL,LB13E+7	; Tile buffer address
-	REPT 7
+  REPT 7
 	LD a,(hl)	; get byte from the buffer
 	LD (de),a	; put byte on the screen
 	dec hl
 	inc e		; prev line
-	ENDM
+  ENDR
 	LD a,(hl)	; get byte from the buffer
 	LD (de),a	; put byte on the screen
 	jp LB2A6
 ; Strategy 4: pixels to 1st plane, $FF to 2nd plane - red / yellow
 DRTILE_5:
 	LD HL,LB13E	; Tile buffer address
-	REPT 7
+  REPT 7
 	LD A,(hl)	; get byte from the buffer
 	LD (de),A	; put byte on the screen
 	inc hl
 	dec e		; next line
-	ENDM
+  ENDR
 	LD a,(hl)	; get byte from the buffer
 	LD (de),a	; put byte on the screen
 	ld a,d
 	add a,$20	; switch to 2nd plane
 	ld d,a
 	ld a,$FF
-	REPT 7
+  REPT 7
 	ld (de),a
 	inc e		; prev line
-	ENDM
+  ENDR
 	ld (de),a
 	jp LB2A6
 ; Strategy 6: pixels to 1st plane, inverted pixels to 2nd plane - blue / yellow
 DRTILE_6:
 	LD HL,LB13E	; Tile buffer address
-	REPT 7
+  REPT 7
 	LD A,(hl)	; get byte from the buffer
 	LD (de),A	; put byte on the screen
 	inc hl
 	dec e		; next line
-	ENDM
+  ENDR
 	LD a,(hl)	; get byte from the buffer
 	LD (de),a	; put byte on the screen
 	ld a,d
 	add a,$20	; switch to 2nd plane
 	ld d,a
-	REPT 7
+  REPT 7
 	LD a,(hl)	; get byte from the buffer
 	cpl
 	LD (de),a	; put byte on the screen
 	dec hl
 	inc e		; prev line
-	ENDM
+  ENDR
 	LD a,(hl)	; get byte from the buffer
 	cpl
 	LD (de),a	; put byte on the screen
@@ -2688,10 +2687,10 @@ DRTILE_FF:
 	add a,$20	; switch to 2nd plane
 	ld h,a
 	xor a
-	REPT 7
+  REPT 7
 	ld (hl),a
 	inc l		; prev line
-	ENDM
+  ENDR
 	ld (hl),a
 ;
 ; Next column
@@ -2764,18 +2763,18 @@ LB348:	LD A,(L7F7A+1)
 ; Change Console color in NEAR, so we see that console action worked
 LB350:	ld HL,$DB67	; NEAR screen address
 	ld c,4		; 4 columns
-_10:	ld b,24		; 24 lines
+.l10:	ld b,24		; 24 lines
 	push hl
-_20:	ld a,(hl)
+.l20:	ld a,(hl)
 	xor $FF
 	ld (hl),a
 	dec l		; next line
 	dec b
-	jp nz,_20
+	jp nz,.l20
 	pop hl
 	inc h		; next column
 	dec c
-	JP NZ,_10
+	JP NZ,.l10
 LB365:	JP LB8D0	; => Update Ninja on tilemap
 
 ; Room 97A6 initialization
@@ -3042,12 +3041,12 @@ LB59E:	DEC C
 ; Fill 510 bytes of tilemap HL with filler A
 FillTilemap:
 	ld b,255	; 510 / 2
-_loop:	ld (hl),a	; fill with $00
+.loop:	ld (hl),a	; fill with $00
 	inc hl
 	ld (hl),a	; fill with $00
 	inc hl
 	dec b
-	jp nz,_loop
+	jp nz,.loop
 	ret
 
 ; Routine at B5C7
@@ -3115,12 +3114,12 @@ LB5F5:	LD (HL),A
 	LD (NJAPOS),HL	; set Ninja position in tilemap: Y * 30 + X
 	LD A,$13
 	LD (L7343),A	; set counter = 19
-IF CVERT NE 0		; Cheat code for short route to Helicopter
+  IF CVERT != 0		; Cheat code for short route to Helicopter
 	ld a,$D4	; diskette
 	ld (LBD79+1),a	; -> HELD
 	ld hl,L8D5C
 	ld (L791E+6),hl	; Right from room 791E -> room 9F7E
-ENDIF
+  ENDIF
 
 ; Current Room changed, entering the new Room
 LB66A:	LD A,(L71D4)
@@ -3322,18 +3321,18 @@ LB7CA:	LD HL,$3939	; !!MUT-ARG!! "99" bomb timer initial value
 ; Highlight the time indicator
 	ld hl,$D64F	; screen address
 	ld c,4
-_10:	ld b,8
+.l10:	ld b,8
 	push hl
-_20:	ld a,(hl)
+.l20:	ld a,(hl)
 	xor $FF
 	ld (hl),a
 	dec l		; down line
 	dec b
-	jp nz,_20
+	jp nz,.l20
 	pop hl
 	inc h		; next column
 	dec c
-	jp nz,_10
+	jp nz,.l10
 ;
 	LD B,50		; 50 hundred
 	CALL LB4DE	; Increase PAY value by 5000
@@ -3872,31 +3871,31 @@ LBBD4:	call ReadInput
 ReadInput:
 	PUSH HL
 	xor a
-	ld (_ReadInp_3+1),a
+	ld (.ReadInp_3+1),a
 	ld hl,ReadInput_map  ; Point HL at the keyboard list
 	ld b,2		; number of rows to check
-_ReadInp_0:
+.ReadInp_0:
 	ld e,(hl)	; get address low
 	inc hl
 	ld d,(hl)	; get address high
 	inc hl
 	ld a,(de)	; get bits for keys
 	ld c,8		; number of keys in a row
-_ReadInp_1:
+.ReadInp_1:
 	rla		; shift A left; bit 0 sets carry bit
-	jp c,_ReadInp_2	; if the bit is 1, the key's not pressed
+	jp c,.ReadInp_2	; if the bit is 1, the key's not pressed
 	ld e,a		; save A
-	ld a,(_ReadInp_3+1)
+	ld a,(.ReadInp_3+1)
 	or (hl)		; set bit for the key pressed
-	ld (_ReadInp_3+1),a
+	ld (.ReadInp_3+1),a
 	ld a,e		; restore A
-_ReadInp_2:
+.ReadInp_2:
 	inc hl		; next table address
 	dec c
-	jp nz,_ReadInp_1	; continue the loop by bits
+	jp nz,.ReadInp_1	; continue the loop by bits
 	dec b
-	jp nz,_ReadInp_0	; continue the loop by lines
-_ReadInp_3:
+	jp nz,.ReadInp_0	; continue the loop by lines
+.ReadInp_3:
 	ld a,$00	; set the result
 	LD (INPUTB),A	; store input bits
 	POP HL
@@ -3928,12 +3927,12 @@ ClearScreen:
 	ld hl,$A000
 	ld bc,$6000
 	xor a
-_10:	ld (hl),a
+.l10:	ld (hl),a
 	inc hl
 	dec c
-	jp nz,_10
+	jp nz,.l10
 	dec b
-	jp nz,_10
+	jp nz,.l10
 	ret
 
 ; Entry point
@@ -4421,12 +4420,12 @@ LC0AB:	push bc
 	PUSH HL
 	PUSH DE
 	ld b,17
-_loop:	ld a,(hl)
+.loop:	ld a,(hl)
 	ld (de),a
 	inc h
 	inc d
 	dec b
-	jp nz,_loop
+	jp nz,.loop
 	POP DE
 	POP HL
 	dec e
@@ -5326,55 +5325,55 @@ MENUL:
 	ld hl,$CDAE
 	ld (LDFDB+1),hl
 	call LDFDB	; Highlight Menu item
-_00:	call ReadInput
+.l00:	call ReadInput
 	rrca		; Right?
-	jp nc,_10
+	jp nc,.l10
 	ld a,(LEVED)
 	inc a
 	cp $39+1
-	jp nc,_00
+	jp nc,.l00
 	ld (LEVED),a
 	jp LDF60
-_10:	rrca		; Left?
-	jp nc,_20
+.l10:	rrca		; Left?
+	jp nc,.l20
 	ld a,(LEVED)
 	dec a
 	cp $30		; '0'
-	jp z,_00
+	jp z,.l00
 	ld (LEVED),a
 	jp LDF60
-_20:	rrca		; Down?
-	jp nc,_30	; no =>
+.l20:	rrca		; Down?
+	jp nc,.l30	; no =>
 	call LDFE6	; Unhighlight Menu item
 	ld a,1
 	ld (MenuItem),a
 	call WaitNoInput
 	jp MENUS
-_30:	rrca		; Up - do nothing
+.l30:	rrca		; Up - do nothing
 	rrca
 	;TODO: check Fire
-	jp _00
+	jp .l00
 ; Menu item "START MISSION"
 MENUS:	ld hl,$CD8E
 	ld (LDFDB+1),hl
 	call LDFDB	; Highlight Menu item
-_00:	call ReadInput
+.l00:	call ReadInput
 	rrca		; Right - do nothing
 	rrca		; Left - do nothing
 	rrca		; Down ?
-	jp nc,_10	; no =>
+	jp nc,.l10	; no =>
 	call LDFE6	; Unhighlight Menu item
 	ld a,2
 	ld (MenuItem),a
 	jp MENUI
-_10:	rrca		; Up ?
-	jp nc,_20	; no =>
+.l10:	rrca		; Up ?
+	jp nc,.l20	; no =>
 	call LDFE6	; Unhighlight Menu item
 	xor a
 	ld (MenuItem),a
 	jp MENUL
-_20:	rrca		; Fire ?
-	jp nc,_00	; =>
+.l20:	rrca		; Fire ?
+	jp nc,.l00	; =>
 	call WaitNoInput
 	jp LE2A7	; => Start Mission
 ; Menu item "INFORMATION"
@@ -5382,39 +5381,39 @@ MENUI:
 	ld hl,$CD6E
 	ld (LDFDB+1),hl
 	call LDFDB	; Highlight Menu item
-_00:	call ReadInput
+.l00:	call ReadInput
 	rrca		; Right - do nothing
 	rrca		; Left - do nothing
 	rrca		; Down - do nothing
 	rrca		; Up ?
-	jp nc,_10	; no =>
+	jp nc,.l10	; no =>
 	call LDFE6	; Unhighlight Menu item
 	ld a,1
 	ld (MenuItem),a
 	call WaitNoInput
 	jp MENUS
-_10:	rrca		; Fire ?
-	jp nc,_00	; =>
+.l10:	rrca		; Fire ?
+	jp nc,.l00	; =>
 	call LDFE6	; Unhighlight Menu item
 ; Show Information page
 	CALL LDEC1	; Clear strings on the screen
 	LD HL,SINFO
 	LD DE,$CDDF
-_50:	ld a,(hl)
+.l50:	ld a,(hl)
 	inc hl
 	or a
-	jp z,_60	; => next line
+	jp z,.l60	; => next line
 	cp $FF
-	jp z,_70	; => end of text
+	jp z,.l70	; => end of text
 	ld c,a		; string length
 	push de
 	call PRSTR	; Print string
 	pop de
-_60:	ld a,e
+.l60:	ld a,e
 	sub 8		; 8 lines lower
 	ld e,a
-	jp _50
-_70:	call WaitNoInput
+	jp .l50
+.l70:	call WaitNoInput
 	call WaitAnyInput
 	jp LDF60
 
@@ -5538,15 +5537,15 @@ LE343:	ex de,hl
 ;
 ; Wait for any key pressed, or time passed
 	ld bc,$1800
-_10:	push bc
+.l10:	push bc
 	call ReadInput
 	pop bc
 	and $1F		; mask for 5 bits
 	jp nz,LE374
 	dec c
-	jp nz,_10
+	jp nz,.l10
 	dec b
-	jp nz,_10
+	jp nz,.l10
 ;
 LE374:
 	call ClearScreen
@@ -5800,47 +5799,45 @@ LFA31:	CALL NRJDEC	; Decrease Energy by B
 ;----------------------------------------------------------------------------
 
 ; Game frame with indicators + tiles, 157 + 207 = 364 bytes
-INCLUDE "sabot1in.asm"
+	INCLUDE "sabot1in.asm"
 
 ; Items, 1080 bytes
-INCLUDE "sabot1it.asm"
+	INCLUDE "sabot1it.asm"
 
 ; Rooms
 Sabot1RoomsBegin:
-IF CSHORT NE 0		; Cheat code for small map
-INCLUDE "sabot1rms.asm"
-ELSE
-INCLUDE "sabot1rm.asm"
-ENDIF
-INCLUDE "sabot1rb.asm"
+	IF CSHORT != 0		; Cheat code for small map
+		INCLUDE "sabot1rms.asm"
+	ELSE
+		INCLUDE "sabot1rm.asm"
+	ENDIF
+	INCLUDE "sabot1rb.asm"
 Sabot1RoomsEnd:
 Sabot1RoomsSize EQU Sabot1RoomsEnd - Sabot1RoomsBegin
 
 ;----------------------------------------------------------------------------
 
 ; Front tiles, 124 tiles, 17 bytes each
-INCLUDE "sabot1t1.asm"
+	INCLUDE "sabot1t1.asm"
 Sabot1Tiles1End:	; Gap of $07DD bytes starts here
 
 ; Title picture (two ninjas), RLE encoded, 693 bytes
-INCLUDE "sabot1mp.asm"
+	INCLUDE "sabot1mp.asm"
 
 ; Sprites, 729 bytes
-INCLUDE "sabot1sp.asm"
+	INCLUDE "sabot1sp.asm"
 ; Font, 472 bytes
-INCLUDE "sabot1ft.asm"
+	INCLUDE "sabot1ft.asm"
 
 	DEFS 119 ;FILLER
 
 Sabot1Tiles1B:
 Sabot1Tiles1Gap EQU Sabot1Tiles1B - Sabot1Tiles1End
-IF Sabot1Tiles1Gap NE 2013	; Make sure second part of tiles properly aligned
-	.ERROR "Sabot1Tiles1Gap should be equal to 2013 = $07DD bytes!"
-ENDIF
-INCLUDE "sabot1t1b.asm"
-INCLUDE "sabot1t2.asm"
+	ASSERT Sabot1Tiles1Gap == 2013	; Make sure second part of tiles properly aligned
+	INCLUDE "sabot1t1b.asm"
+	INCLUDE "sabot1t2.asm"
 	DEFS 360
-INCLUDE "sabot1t3.asm"
+	INCLUDE "sabot1t3.asm"
 
 ;----------------------------------------------------------------------------
 
@@ -5859,4 +5856,5 @@ TLSCR5:	DEFS	510
 
 ;----------------------------------------------------------------------------
 Sabot1End:
-;END
+	OUTEND
+	END

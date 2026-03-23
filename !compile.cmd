@@ -10,17 +10,15 @@ rem Define ESCchar to use in ANSI escape sequences
 rem https://stackoverflow.com/questions/2048509/how-to-echo-with-different-colors-in-the-windows-command-line
 for /F "delims=#" %%E in ('"prompt #$E# & for %%E in (1) do rem"') do set "ESCchar=%%E"
 
-@echo on
-tools\pasmo --equ LZSIZE1=20000 sabot0.asm sabot0.bin sabot0.txt sabot0.inc
-@if errorlevel 1 goto Failed
-@echo off
+echo Compiling sabot0 first pass...
+tools\sjasmplus --nologo --msg=war --i8080 sabot0.asm --lst=sabot0.lst --exp=sabot0.inc -DLZSIZE1=19000
+if errorlevel 1 goto Failed
 
 dir /-c sabot0.bin|findstr /R /C:"sabot0.bin"
 
-@echo on
-tools\pasmo --alocal -8 sabot1.asm sabot1.bin sabot1.txt
-@if errorlevel 1 goto Failed
-@echo off
+echo Compiling code...
+tools\sjasmplus --nologo --msg=war --i8080 sabot1.asm --lst=sabot1.lst
+if errorlevel 1 goto Failed
 
 dir /-c sabot1.bin|findstr /R /C:"sabot1.bin"
 
@@ -31,10 +29,9 @@ dir /-c sabot1.zx0|findstr /R /C:"sabot1.zx0"
 call :FileSize sabot1.zx0
 set lzsize1=%fsize%
 
-@echo on
-tools\pasmo --equ LZSIZE1=%lzsize1% sabot0.asm sabot0.bin sabot0.txt sabot0.inc
-@if errorlevel 1 goto Failed
-@echo off
+echo Compiling sabot0 second pass...
+tools\sjasmplus --nologo --msg=war --i8080 sabot0.asm --lst=sabot0.lst --exp=sabot0.inc -DLZSIZE1=%lzsize1%
+if errorlevel 1 goto Failed
 
 copy /b sabot0.bin+sabot1.zx0 sabot1.rom >nul
 

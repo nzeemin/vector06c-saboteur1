@@ -1,12 +1,15 @@
 ;----------------------------------------------------------------------------
 
-	PUBLIC KeyLineEx, KeyLine0
-	PUBLIC JoystickP	; F200DULR
-	PUBLIC BorderColor
-	PUBLIC dzx0, SABOTCOD0_END
+	EXPORT KeyLineEx
+	EXPORT KeyLine0
+	EXPORT JoystickP	; F200DULR
+	EXPORT BorderColor
+	EXPORT dzx0
+	EXPORT SABOTCOD0_END
 
 ;----------------------------------------------------------------------------
 
+	OUTPUT "sabot0.bin"
 	ORG	100h
 
 	di
@@ -243,3 +246,5 @@ dzx0_ldir1:
 ;----------------------------------------------------------------------------
 
 SABOTCOD0_END
+	OUTEND
+	END
