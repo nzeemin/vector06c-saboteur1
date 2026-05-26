@@ -1,6 +1,6 @@
 /x-*
 /.vscode
-/sabot0.inc
+/*.inc
 /*.bin
 /*.rom
 /*.lst

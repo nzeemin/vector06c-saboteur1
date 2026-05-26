@@ -629,7 +629,9 @@ LEVED:	DEFM "1"	; Current Level digit
 LC087:	DEFM "TOTAL PAY : $"
 
 TITLE:	DEFM "SABOTEUR VECTOR-06C"
-	DEFM "RETROGRAD 2025"
+VERSION:
+	INCLUDE "versio.inc"
+VERSZ = $ - VERSION
 LDF27:	DEFM "START MISSION"
 	DEFM "INFORMATION"
 
@@ -890,7 +892,7 @@ L73F3:	POP HL		; Restore token sequence address
 	LD A,(HL)	; get tile byte
 	PUSH HL
 	LD HL,TLSCR0	; Tile screen 0 start address
-	call FillTilemap
+	call FillTilemap ; Fill TLSCR0 with tile A
 	JP LB702	; => Proceed to the next room token
 
 ; Room token #05: Copy block of tiles; params: 6 bytes (width, height, srcaddr, address)
@@ -1283,6 +1285,11 @@ L9DD0:	LD (LB673+1),HL	; save current Dog data address
 NRJDEC:	RET		; !!MUT-CMD!! $C5 PUSH BC or $C9 RET
   IF CHELTH == 0	; Cheat code for no damage
 	CALL L749E	; Decrease Energy
+  ELSE
+	DISPLAY "CHELTH cheat is ON"
+	NOP
+	NOP
+	NOP
   ENDIF
 	POP BC
 	LD A,(NRJ)	; get Energy
@@ -2017,14 +2024,24 @@ LA734:	LD A,(DE)	; get tile
 	jp nz,LA732	; continue loop by rows
 	RET
 
+; Set update flags for Ninja, 6x7 tiles
+UPNJA:	LD HL,(NJAPOS)	; get Ninja position in tilemap
+	jp LA763
+;
 ; Set update flags for Guard, 6x7 tiles
 UPGARD:	ld hl,(GARDPOS)	; get Current Guard position in tilemap
-	ex de,hl
-	LD HL,TLSCR1	; Tile screen 1 start address
+LA763:	ld DE,TLSCR1+2	; Tile screen 1 start address + 2
 	ADD HL,DE	; now HL in update flags tilemap
-	LD DE,$0018	; 24
 	LD A,$01	; "need to update" flag
-	LD B,$07	; 7 rows
+; 1st row: __XX__
+	ld (HL),A	; set the flag
+	inc HL
+	ld (HL),A	; set the flag
+	ld DE,27
+	add HL,DE	; next row
+; other rows: XXXXXX
+	LD DE,24
+	LD B,$06	; 6 rows
 LA76A:	LD C,$06	; 6 columns
 LA76C:	LD (HL),A	; set the flag
 	INC HL		; next column
@@ -2162,24 +2179,36 @@ LACFB:	LD A,(HL)
 	JP LACD5
 LAD1D:
 	POP DE
-	LD DE,$C767
 	LD HL,LAD4A	; Indicator messages address
-	LD C,$0D
-	CALL PRSTR	; Print string "PAY : $ XXXXX"
-	LD DE,$D75F
-	LD C,$02
-	CALL PRSTR	; Print string "99"
-	LD DE,$C14F
-	LD C,$04
-	CALL PRSTR	; Print string "HELD"
-	LD DE,$D64F
-	LD C,$04
-	CALL PRSTR	; Print string "TIME"
-	LD DE,$DB4F
-	LD C,$04
-	CALL PRSTR	; Print string "NEAR"
+	CALL PRSTRS	; Print string "PAY : $ XXXXX"
+	DEFW $C767
+	DEFB $0D
+	CALL PRSTRS	; Print string "99"
+	DEFW $D75F
+	DEFB 2
+	CALL PRSTRS	; Print string "HELD"
+	DEFW $C14F
+	DEFB 4
+	CALL PRSTRS	; Print string "TIME"
+	DEFW $D64F
+	DEFB 4
+	CALL PRSTRS	; Print string "NEAR"
+	DEFW $DB4F
+	DEFB 4
 	RET
 
+; Print string on the screen, two arguments after the CALL statement
+; 1st word = screen address, 2nd byte = length
+; HL = string address
+PRSTRS:
+	ex (SP),HL	; HL = return address, (SP) = string address
+	ld E,(HL)	; screen address low
+	inc HL
+	ld D,(HL)	; screen address high
+	inc HL
+	ld C,(HL)	; get string length
+	inc HL
+	ex (SP),HL	; store return address, HL = string address
 ; Print string with standard font
 ; C  = Length
 ; HL = string address
@@ -2263,6 +2292,7 @@ LB16D:	LD C,30		; 30 columns
 LB16F:	XOR A
 	CP (HL)		; Check "need update" flag in Tile screen 1
 	JP Z,LB2A9	; zero => Skip this tile rendering
+	ld (HL),A	; clear the flag
 	PUSH HL
 	PUSH BC
 	PUSH DE
@@ -2273,7 +2303,7 @@ LB177:	ld hl,(L7238)	; get offset
 	add hl,de	; now HL = address in Tile screen 0
 	ld a,(hl)	; get tile from Tile screen 0
 	CP $FF		; $FF - "earth" background?
-	jp z,DRTILE_FF
+	jp z,DRTILE_FF	; yes => special case for $FF
 LB184:
 	LD H,$00
 	LD L,A
@@ -2355,12 +2385,14 @@ DRNJA_LT:
 	LD A,(DE)	; get byte from tile buffer
 	LD C,A
 	LD A,(HL)	; get byte from tile data (mask)
-	CALL MirrorByte	; Mirror byte if needed
+	ld  ($ + 4), a	; Mirror byte if needed
+	ld  a, (MIRROR)	; fast mirroring
 	AND C		; AND with byte from the buffer - apply the mask
 	LD C,A
 	inc hl
 	LD A,(HL)	; get byte from tile data (pixels)
-	CALL MirrorByte	; Mirror byte if needed
+	ld  ($ + 4), a	; Mirror byte if needed
+	ld  a, (MIRROR)	; fast mirroring
 	OR C		; OR with the byte from buffer - apply pixels
 	LD (DE),A
 	inc hl
@@ -2410,12 +2442,14 @@ DRDOG_LT:
 	LD A,(DE)	; get byte from tile buffer
 	LD C,A
 	LD A,(HL)
-	CALL MirrorByte
+	ld  ($ + 4), a	; Mirror byte if needed
+	ld  a, (MIRROR)	; fast mirroring
 	AND C
 	LD C,A
 	inc hl
 	LD A,(HL)
-	CALL MirrorByte
+	ld  ($ + 4), a	; Mirror byte if needed
+	ld  a, (MIRROR)	; fast mirroring
 	OR C
 	inc hl
 	LD (DE),A
@@ -2463,12 +2497,14 @@ DRGARD_LT:
 	LD A,(DE)	; get byte from tile buffer
 	LD C,A
 	LD A,(HL)	; get byte from tile data (mask)
-	CALL MirrorByte
+	ld  ($ + 4), a	; Mirror byte if needed
+	ld  a, (MIRROR)	; fast mirroring
 	AND C		; AND with byte from buffer - masking
 	LD C,A
 	inc hl
 	LD A,(HL)	; get byte from tile data (pixels)
-	CALL MirrorByte
+	ld  ($ + 4), a	; Mirror byte if needed
+	ld  a, (MIRROR)	; fast mirroring
 	OR C		; OR with byte from buffer
 	LD (DE),A	; save result byte to tile buffer
 	inc hl
@@ -2515,7 +2551,7 @@ LB284:	LD A,(DE)	; get byte from buffer
 ; Draw prepared tile on the screen
 LB293:
 	ld a,(LB146)	; get attribute byte
-	and $07		; 0..4
+	and $0F		; 0/2/4/8/10/12/14
 	ld l,a
 	ld h,$00
 	ld de,DRTILE_T	; Table of DRTILE strategies
@@ -2669,7 +2705,7 @@ DRTILE_FF:
 	push hl
 	ld de,$2000
 	ld (hl),d	; inversed $DF
-	dec l
+	dec l		; next line
 	ld (hl),$04	; inversed $FB
 	dec l
 	ld (hl),d	; inversed $DF
@@ -2683,12 +2719,10 @@ DRTILE_FF:
 	ld (hl),d	; inversed $DF
 	dec l
 	ld (hl),e	; inversed $FF
-	ld a,h
-	add a,$20	; switch to 2nd plane
-	ld h,a
+	add hl,de	; +$2000: switch to 2nd plane
 	xor a
   REPT 7
-	ld (hl),a
+	ld (hl),a	; clear byte on 2nd plane
 	inc l		; prev line
   ENDR
 	ld (hl),a
@@ -2719,15 +2753,6 @@ LB2CB:	ld a,e
 DRTILE_T:
 	DEFW DRTILE_0, DRTILE_1, DRTILE_2, DRTILE_3
 	DEFW DRTILE_4, DRTILE_5, DRTILE_6, DRTILE_0
-
-; Mirror byte A
-MirrorByte:
-	push hl
-	ld h,MIRROR SHR 8	; high byte
-	ld l,a
-	ld a,(hl)
-	pop hl
-	ret
 
 ;------------------------------------------------------------------------------
 
@@ -2789,8 +2814,8 @@ LB374:	LD A,(HL)
 	AND $07
 	LD B,A
 	INC HL
-LB379:	LD A,$10
-	;OUT ($FE),A
+LB379:	LD A,1
+	out ($00),a
 	PUSH BC
 	LD A,(HL)
 	AND $3F
@@ -2799,7 +2824,7 @@ LB382:	dec b
 	jp nz,LB382
 	POP BC
 	XOR A
-	;OUT ($FE),A
+	out ($00),a
 	dec b
 	jp nz,LB379
 	INC HL
@@ -2942,8 +2967,14 @@ LB4D3:	LD B,$0F	; !!MUT-ARG!! Turret counter value
 	INC (HL)
 	RET
 
+; Increase PAY value, the value is byte after the CALL statement
+INCPAYS:
+	ex (SP),HL	; get return address
+	ld B,(HL)
+	inc HL
+	ex (SP),HL	; store return address back to stack
 ; Increase PAY value by B * 100
-LB4DE:	LD HL,LAD52+2	; PAY value 3rd digit address
+INCPAY:	LD HL,LAD52+2	; PAY value 3rd digit address
 	LD A,$3A	; ':' = '9' + 1
 LB4E3:	INC (HL)
 	CP (HL)
@@ -2952,7 +2983,7 @@ LB4E3:	INC (HL)
 	DEC HL		; previous digit
 	JP LB4E3
 LB4ED:	dec b
-	jp nz,LB4DE
+	jp nz,INCPAY
 	LD HL,LAD52	; Pay value text address
 	LD C,5		; five digits
 	LD DE,$CF67	; Screen address
@@ -3038,6 +3069,12 @@ LB59E:	DEC C
 	jp nz,LB598
 	RET
 
+; Fill 510 bytes of tilemap TLSCR4 with $FF
+FillTilemap4:
+	LD HL,TLSCR4	; Tile screen 0 start address
+; Fill 510 bytes of tilemap HL with $FF
+FillTilemapFF:
+	ld A,$FF
 ; Fill 510 bytes of tilemap HL with filler A
 FillTilemap:
 	ld b,255	; 510 / 2
@@ -3115,10 +3152,17 @@ LB5F5:	LD (HL),A
 	LD A,$13
 	LD (L7343),A	; set counter = 19
   IF CVERT != 0		; Cheat code for short route to Helicopter
+  	DISPLAY "CVERT cheat is ON"
 	ld a,$D4	; diskette
 	ld (LBD79+1),a	; -> HELD
 	ld hl,L8D5C
 	ld (L791E+6),hl	; Right from room 791E -> room 9F7E
+  ENDIF
+  IF CSHORT != 0		; Cheat code for small map
+	DISPLAY "CSHORT cheat is ON"
+	ld hl,L8D18
+	ld (L791E+6),hl	; Room 791E with pier to Right -> room 8D18
+	;TODO
   ENDIF
 
 ; Current Room changed, entering the new Room
@@ -3165,16 +3209,14 @@ LB6BB:	LD (HL),A
 	ADD HL,DE
 	dec b
 	jp nz,LB6BB
-; Fill Tile screen 0 with $00
+; Fill Tile screen 0 with A = $00
 	LD HL,TLSCR0	; Tile screen 0 start address
-	call FillTilemap
+	call FillTilemap ; Fill TLSCR0 with $00
 	INC A		; A = $01
 	LD (LA3B4),A
 ; Fill Tile screen 4 and Tile screen 5 with $FF
-	LD HL,TLSCR4	; Tile screen 4 start address
-	ld a,$FF	; fill with transparent tile
-	call FillTilemap
-	call FillTilemap
+	call FillTilemap4 ; Fill TLSCR4 with $FF = transparent tile
+	call FillTilemapFF ; Fill TLSCR5 with $FF = transparent tile
 ;
 	LD HL,(ROOM)	; get Current Room address
 	INC HL
@@ -3233,13 +3275,11 @@ LB422:			; redirect - Standard room initialization (for 60 rooms)
 LB724:
 	LD HL,TLSCR1	; Tile screen 1 start address
 	ld a,$01	; Filler = $01 = "need update" mark
-	call FillTilemap
+	call FillTilemap ; Fill TLSCR1 with $01
 	LD HL,TLSCR2	; Tile screen 2 start address
-	ld a,$FF	; Filler = transparent tile
-	call FillTilemap
+	call FillTilemapFF ; Fill TLSCR2 with $FF = transparent tile
 	LD HL,TLSCR3	; Tile screen 3 start address
-	ld a,$FF	; Filler = transparent tile
-	call FillTilemap
+	call FillTilemapFF ; Fill TLSCR3 with $FF = transparent tile
 ;
 	CALL DRALL	; Draw tile map on the screen
 ;
@@ -3296,10 +3336,10 @@ LB78B:	LD HL,TIMECN	; address for Time fast counter
 	DEC (HL)	; decrease Time higher digit
 	CP (HL)
 	JP Z,LBE71	; time is out =>
-LB7A4:	LD DE,$D75F	; screen address for timer value
-	LD HL,LAD57	; Indicator Time value address
-	LD C,$02	; Two digits
-	CALL PRSTR	; Print string
+LB7A4:	LD HL,LAD57	; Indicator Time value address
+	CALL PRSTRS	; Print string
+	DEFW $D75F	; screen address for timer value
+	DEFB 2		; Two digits
 ; Check for BOMB
 LB7AF:	LD A,(LD287+4)	; check Object #7 in Table of objects D256
 	CP $D6		; BOMB tile in the place of Diskette?
@@ -3311,9 +3351,9 @@ LB7B6:	LD HL,TIMODE	; Time mode address
 	JP Z,LB7ED
 	LD (HL),A	; set Time mode = BOMB ticking mode
 	LD HL,LBD2F	; "BOMB"
-	LD DE,$D64F	; screen address under timer value
-	LD C,$04
-	CALL PRSTR	; Print string "BOMB"
+	CALL PRSTRS	; Print string "BOMB"
+	DEFW $D64F	; screen address under timer value
+	DEFB 4
 LB7CA:	LD HL,$3939	; !!MUT-ARG!! "99" bomb timer initial value
 	LD (LAD57),HL	; set Indicator Time value
 	LD A,$01
@@ -3334,15 +3374,16 @@ LB7CA:	LD HL,$3939	; !!MUT-ARG!! "99" bomb timer initial value
 	dec c
 	jp nz,.l10
 ;
-	LD B,50		; 50 hundred
-	CALL LB4DE	; Increase PAY value by 5000
-LB7ED:	LD HL,TLSCR1	; Tile screen 1 start address
-	xor a		; "no need to update" value
-	call FillTilemap
-	CALL LBBBB	; Set update flags for Ninja, 6x7 tiles
+	CALL INCPAYS	; Increase PAY value by 5000
+	DEFB 50		; 50 hundred
+LB7ED:
+;NOTE: No need to clear "need to update" flags - we clear them inside DRALL
+;	LD HL,TLSCR1	; Tile screen 1 start address
+;	xor a		; "no need to update" value
+;	call FillTilemap ; Fill TLSCR1 with $00
+	CALL UPNJA	; Set update flags for Ninja, 6x7 tiles
 	LD HL,TLSCR2	; Tile screen 2 start address
-	ld a,$FF
-	call FillTilemap
+	call FillTilemapFF ; Fill TLSCR2 with $FF = transparent tile
 	XOR A
 	LD (LB84C),A	; clear Object tile
 	LD C,A
@@ -3441,10 +3482,8 @@ LB8C9:	XOR A
 LB8CD:	JP LBEB3	; !!MUT-ARG!! => run handler
 
 ; Update Ninja on tilemap
-LB8D0:	CALL LBBBB	; Set update flags for Ninja, 6x7 tiles
-	LD HL,TLSCR4	; Tile screen 4 start address
-	ld a,$FF
-	call FillTilemap
+LB8D0:	CALL UPNJA	; Set update flags for Ninja, 6x7 tiles
+	call FillTilemap4 ; Fill TLSCR4 with $FF = transparent tile
 
 ; Draw Ninja on tilemap
 LB8E0:	LD HL,(NJAPOS)	; get Ninja position in tilemap
@@ -3491,8 +3530,7 @@ LB913:	LD A,(DE)
 	dec b
 	jp nz,LB911
 LB922:	LD HL,TLSCR3	; Tile screen 3 start address
-	ld a,$FF
-	call FillTilemap
+	call FillTilemapFF ; Fill TLSCR3 with $FF = transparent tile
 	LD HL,(ROOM)	; get Current Room address
 	LD A,(HL)
 	INC HL
@@ -3664,8 +3702,8 @@ LB9E4:	LD A,(GARDST)	; get Guard state
 	JP Z,LBAD5	; already dead =>
 	LD A,$09
 	LD (GARDST),A	; set Guard state = $09 dead
-	LD B,1		; 1 hundred
-	CALL LB4DE	; Increase PAY value by 100 - Guard killed by weapon
+	CALL INCPAYS	; Increase PAY value by 100 - Guard killed by weapon
+	DEFB 1		; 1 hundred
 	JP LBAD5	; => delete the object
 ; Ninja hit by the object
 LBA0C:	LD B,20		; Ninja hit by the object
@@ -3839,23 +3877,6 @@ LBBAE_HL:
 	add hl,de
 	ld (hl),$01	; set "need update" mark
 	pop hl
-	RET
-
-; Set update flags for Ninja, 6x7 tiles
-LBBBB:	LD HL,(NJAPOS)	; get Ninja position in tilemap
-	LD DE,TLSCR1	; Tile screen 1 start address
-	ADD HL,DE
-	LD DE,$0018	; 24
-	LD A,$01	; "need to update" mark
-	LD B,$07	; 7 rows
-LBBC9:	LD C,$06	; 6 columns
-LBBCB:	LD (HL),A	; set the flag
-	INC HL
-	DEC C
-	JP NZ,LBBCB	; continue by columns
-	ADD HL,DE	; next row
-	dec b
-	jp nz,LBBC9	; continue by rows
 	RET
 
 ; Movement handler: Ninja punching
@@ -4071,8 +4092,8 @@ LBD08:	LD (DE),A
 	LD (HL),$01	; set Time mode = time stopped
 	;LD HL,$0190
 	;CALL LB371	; Play melody
-	LD B,50		; 50 hundred
-	CALL LB4DE	; Increase PAY value by 5000
+	CALL INCPAYS	; Increase PAY value by 5000
+	DEFB 50		; 50 hundred
 	JP LB8D0	; => Update Ninja on tilemap
 
 ; Routine at BD33
@@ -4157,8 +4178,8 @@ LBDC2:	ADD HL,DE	; now HL = address in Guard tilemap
 	LD A,$09
 	LD (GARDST),A	; set Guard state = $09 dead
 	CALL LB596	; Noise sound
-	LD B,5		; 5 hundreds
-	CALL LB4DE	; Increase PAY value by 500 - Guard killed by punch/kick
+	CALL INCPAYS	; Increase PAY value by 500 - Guard killed by punch/kick
+	DEFB 5		; 5 hundreds
 LBDD4:	LD HL,LBBD4	; Movement handler address
 	LD DE,LD504	; Sprite Ninja/Guard punching
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
@@ -4280,12 +4301,12 @@ LBEAA:	POP HL
 
 ; Movement handler: Game Over
 LBEB3:	LD HL,LBEEF	; !!MUT-ARG!! two-line message address
-	LD DE,$C8DF	; screen address
-	LD C,$0F
-	CALL PRSTR	; Print string 1st line
-	LD DE,$C6CF	; screen address
-	LD C,$14
-	CALL PRSTR	; Print string 2nd line
+	CALL PRSTRS	; Print string 1st line
+	DEFW $C8DF	; screen address
+	DEFB $0F
+	CALL PRSTRS	; Print string 2nd line
+	DEFW $C6CF	; screen address
+	DEFB $14
 	;LD HL,$E868
 	;LD B,$0F
 LBECB:	;LD (HL),$0F	; set attribute
@@ -4358,52 +4379,49 @@ LBFCC:	LD HL,LC22F	; Movement handler: Ninja sitting
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
 
 ; Escaped; clear screen, show final messages, then Game Over
-LBFD5:	LD B,10		; 10 hundred
-	CALL LB4DE	; Increase PAY value by 1000 - Escape by Helicopter
+LBFD5:	CALL INCPAYS	; Increase PAY value by 1000 - Escape by Helicopter
+	DEFB 10		; 10 hundred
 	LD A,(LBD79+1)
 	CP $D4
 	JP NZ,LC04A
-	LD B,50		; 50 hundred
-	CALL LB4DE	; Increase PAY value by 5000
+	CALL INCPAYS	; Increase PAY value by 5000
+	DEFB 50
 ;
 	call ClearScreen
 ;
 	LD HL,LC062	; Messages address
-	LD DE,$C9D7	; Screen address
-	LD C,$0E
-	CALL PRSTR	; Print string "DISK RETRIEVED"
-	LD DE,$C8A7
-	LD C,$12
-	CALL PRSTR	; Print string "DISK BONUS: $05000"
-	LD DE,$C597
-	LD C,$07
-	CALL PRSTR	; Print string "LEVEL N"
-	LD DE,$C267
-	LD C,$0D
-	CALL PRSTR	; Print string "TOTAL PAY : $"
-	LD DE,$CD97
+	CALL PRSTRS	; Print string "DISK RETRIEVED"
+	DEFW $C9D7	; Screen address
+	DEFB $0E
+	CALL PRSTRS	; Print string "DISK BONUS: $05000"
+	DEFW $C8A7
+	DEFB $12
+	CALL PRSTRS	; Print string "LEVEL N"
+	DEFW $C597
+	DEFB 7
+	CALL PRSTRS	; Print string "TOTAL PAY : $"
+	DEFW $C267
+	DEFB $0D
 	LD HL,LC075	; Messages address
-	LD C,$0D
-	CALL PRSTR	; Print string "BONUS: $05000"
-	LD DE,$D597
+	CALL PRSTRS	; Print string "BONUS: $05000"
+	DEFW $CD97
+	DEFB $0D
 	LD HL,LE388	; level bonus string
-	LD C,$03
-	CALL PRSTR	; Print string
+	CALL PRSTRS	; Print string
+	DEFW $D597
+	DEFB 3
 	LD A,(LE38B)
 	LD B,A
-	CALL LB4DE	; Increase PAY value by B * 100
+	CALL INCPAY	; Increase PAY value by B * 100
 	LD A,$14	; "INC D" instruction code
 	LD (LBEDF),A
 LC04A:	LD A,(TIMODE)	; get Time mode
 	CP $02		; BOMB ticking mode?
 	JP NZ,LC056	; no =>
-	LD B,100	; 100 hundred
-	CALL LB4DE	; Increase PAY value by 10000 - Escape with Disk and Bomb
+	CALL INCPAYS	; Increase PAY value by 10000 - Escape with Disk and Bomb
+	DEFB 100	; 100 hundred
 LC056:	LD HL,LBF12	; "ESCAPE" / "MISSION SUCCESSFUL"
 	LD (LBEB3+1),HL	; set two-line Game Over message
-	;NOP
-	;NOP
-	;NOP
 	JP LBEB3	; => Game Over
 
 ; Movement handler: helicopter moving up
@@ -4904,8 +4922,8 @@ LC4BE:	ADD HL,DE
 	LD A,$09
 	LD (GARDST),A	; set Guard state = $09 dead
 	CALL LB596	; Noise sound
-	LD B,5		; 5 hundred
-	CALL LB4DE	; Increase PAY value by 500 - Guard killed by punch/kick
+	CALL INCPAY	; Increase PAY value by 500 - Guard killed by punch/kick
+	DEFB 5		; 5 hundred
 ; Entry point
 LC4D0:	LD HL,LC4DE	; Movement handler address
 	LD DE,LD4B0	; Sprite Ninja/Guard jumping
@@ -5288,23 +5306,23 @@ LDF4C:	;PUSH DE
 LDF60:	ei
 	CALL LDEC1	; Clear strings on the screen
 	LD HL,TITLE	; Menu messages address
-	LD DE,$CBFF
-	LD C,19
-	CALL PRSTR	; Print title string
-	LD DE,$CDEF
-	LD C,14
-	CALL PRSTR	; Print title string
+	CALL PRSTRS	; Print title string
+	DEFW $CBFF
+	DEFB 19
+	CALL PRSTRS	; Print version string
+	DEFW $CDEF
+	DEFB VERSZ
 	LD HL,LC082
-	LD C,7
-	LD DE,$CDB7
-	CALL PRSTR	; Print string "LEVEL N"
+	CALL PRSTRS	; Print string "LEVEL N"
+	DEFW $CDB7
+	DEFB 7
 	LD HL,LDF27
-	LD C,13
-	LD DE,$CD97
-	CALL PRSTR	; Print string "START MISSION"
-	LD C,11
-	LD DE,$CD77
-	CALL PRSTR	; Print string "INFORMATION"
+	CALL PRSTRS	; Print string "START MISSION"
+	DEFW $CD97
+	DEFB 13
+	CALL PRSTRS	; Print string "INFORMATION"
+	DEFW $CD77
+	DEFB 11
 ;
 	;CALL LE04D	; Clear key buffer playing melody
 	CALL LDFDB	; Highlight Menu item
@@ -5466,12 +5484,12 @@ LE2A7:	CALL LDFE6	; Unhighlight Menu item
 	CALL LDEC1	; Clear strings on the screen
 ;NOTE: "ENTER SKILL LEVEL" - moved to Menu
 	LD HL,LE204	; "YOUR MISSION"
-	LD DE,$CECF
-	LD C,$0C
-	CALL PRSTR	; Print string "YOUR MISSION"
-	LD DE,$D0C7
-	LD C,$07
-	CALL PRSTR	; Print string "WILL BE"
+	CALL PRSTRS	; Print string "YOUR MISSION"
+	DEFW $CECF
+	DEFB $0C
+	CALL PRSTRS	; Print string "WILL BE"
+	DEFW $D0C7
+	DEFB 7
 	LD A,(LEVED)	; get Skill level
 	SUB $31
 	LD L,A
@@ -5482,9 +5500,9 @@ LE2A7:	CALL LDFE6	; Unhighlight Menu item
 	ADD HL,HL	; * 16
 	LD DE,LE217	; Levels data base address
 	ADD HL,DE
-	LD DE,$CDB7
-	LD C,$0E
-	CALL PRSTR	; Print string - level description
+	CALL PRSTRS	; Print string - level description
+	DEFW $CDB7
+	DEFB $0E
 	LD A,(HL)
 	INC HL
 	LD H,(HL)
@@ -5806,14 +5824,11 @@ LFA31:	CALL NRJDEC	; Decrease Energy by B
 
 ; Rooms
 Sabot1RoomsBegin:
-	IF CSHORT != 0		; Cheat code for small map
-		INCLUDE "sabot1rms.asm"
-	ELSE
-		INCLUDE "sabot1rm.asm"
-	ENDIF
+	INCLUDE "sabot1rm.asm"
 	INCLUDE "sabot1rb.asm"
 Sabot1RoomsEnd:
 Sabot1RoomsSize EQU Sabot1RoomsEnd - Sabot1RoomsBegin
+	DISPLAY "Rooms size: ", /A, Sabot1RoomsSize
 
 ;----------------------------------------------------------------------------
 
@@ -5856,5 +5871,6 @@ TLSCR5:	DEFS	510
 
 ;----------------------------------------------------------------------------
 Sabot1End:
+	DISPLAY "Top address: ", /A, Sabot1End
 	OUTEND
 	END

@@ -10,6 +10,13 @@ rem Define ESCchar to use in ANSI escape sequences
 rem https://stackoverflow.com/questions/2048509/how-to-echo-with-different-colors-in-the-windows-command-line
 for /F "delims=#" %%E in ('"prompt #$E# & for %%E in (1) do rem"') do set "ESCchar=%%E"
 
+for /f "tokens=2 delims==" %%a in ('wmic OS Get localdatetime /value') do set "dt=%%a"
+set "YY=%dt:~2,2%" & set "YYYY=%dt:~0,4%" & set "MM=%dt:~4,2%" & set "DD=%dt:~6,2%"
+set "DATESTAMP=%YYYY%-%MM%-%DD%"
+for /f %%i in ('git rev-list HEAD --count') do (set REVISION=%%i)
+echo VER.%REVISION% %DATESTAMP%
+echo 	DEFM "VER.%REVISION% %DATESTAMP%" > versio.inc
+
 echo Compiling sabot0 first pass...
 tools\sjasmplus --nologo --msg=war --i8080 sabot0.asm --lst=sabot0.lst --exp=sabot0.inc -DLZSIZE1=19000
 if errorlevel 1 goto Failed
