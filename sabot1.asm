@@ -3151,9 +3151,22 @@ LB5F5:	LD (HL),A
   ENDIF
   IF CSHORT != 0		; Cheat code for small map
 	DISPLAY "CSHORT cheat is ON"
+	; L791E: pier room Right -> L8D18 (skip mid-map)
 	ld hl,L8D18
-	ld (L791E+6),hl	; Room 791E with pier to Right -> room 8D18
-	;TODO
+	ld (L791E+6),hl
+	; L8D18: Left -> nowhere, Right -> L9DF5
+	ld hl,0
+	ld (L8D18+4),hl
+	ld hl,L9DF5
+	ld (L8D18+6),hl
+	; L9DF5: Left -> L8D18, Right -> LA022
+	ld hl,L8D18
+	ld (L9DF5+4),hl
+	ld hl,LA022
+	ld (L9DF5+6),hl
+	; LA022: Left -> L9DF5
+	ld hl,L9DF5
+	ld (LA022+4),hl
   ENDIF
 
 ; Current Room changed, entering the new Room

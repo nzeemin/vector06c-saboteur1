@@ -7,12 +7,15 @@ Screenshot of the ported version:
 
 ![](screenshot/menu.png)
 ![](screenshot/gameplay.png)
+![](screenshot/gameplay2.png)
 
 
-## Tools for the tools folder
+## Tools used
 
  - `sjasmplus.exe` cross-assembler
    https://github.com/z00m128/sjasmplus
 
  - `salvador.exe` ZX0 compressor
    https://github.com/emmanuel-marty/salvador/releases
+
+ - Vector-06C emulators
