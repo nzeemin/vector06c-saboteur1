@@ -890,7 +890,7 @@ L73F3:	POP HL		; Restore token sequence address
 	LD A,(HL)	; get tile byte
 	PUSH HL
 	LD HL,TLSCR0	; Tile screen 0 start address
-	call FillTilemap ; Fill TLSCR0 with tile A
+	call FillTilemap1 ; Fill TLSCR0 with tile A
 	JP LB702	; => Proceed to the next room token
 
 ; Room token #05: Copy block of tiles; params: 6 bytes (width, height, srcaddr, address)
@@ -1305,6 +1305,7 @@ L9DF1:	dec b
 LA0DF:	LD HL,LA1E1	; Guard data address
 ; Initialize a guard, then Standard room initialization
 LA0E2:	CALL LB40A	; Initialize a guard
+	JP LB422	; Standard room initialization
 
 ; Room 7DA9 initialization
 LA0E8:	LD HL,LA1E7	; Guard data address
@@ -3060,19 +3061,40 @@ LB59E:	DEC C
 	jp nz,LB598
 	RET
 
+; Fill 510*2 bytes of tilemap HL with filler A
+FillTilemap2:
+	ld b,17*2	; 17 rows * 2
+	ld DE,510*2
+	add HL,DE	; HL = end of tilemap block
+	jp FillTilemap0
 ; Fill 510 bytes of tilemap HL with $FF
 FillTilemapFF:
 	ld A,$FF
 ; Fill 510 bytes of tilemap HL with filler A
-FillTilemap:
-	ld b,51		; 510 / 10
+FillTilemap1:
+	ld b,17		; 17 rows
+	ld DE,510
+	add HL,DE	; HL = end of tilemap block
+; HL = end of block to fill, B = number of rows, A = filler
+FillTilemap0:
+	ex de,hl	; now DE = end of block
+	ld hl,$0000
+	add hl,sp	; now HL = current SP
+	ld (FillTilemap_fin+1),hl ; save SP to restore at the end
+	ex de,hl	; now HL = end of tilemap block
+	ld D,A
+	ld E,A
+	di
+	ld SP,HL
 .loop:
-    REPT 10
-	ld (hl),a
-	inc hl
+    REPT 15
+	push DE
     ENDR
 	dec b
 	jp nz,.loop
+FillTilemap_fin:
+	ld sp,$0000	; !!MUT-ARG!! restore SP
+	ei
 	ret
 
 ; Routine at B5C7
@@ -3213,13 +3235,13 @@ LB6BB:	LD (HL),A
 	jp nz,LB6BB
 ; Fill Tile screen 0 with A = $00
 	LD HL,TLSCR0	; Tile screen 0 start address
-	call FillTilemap ; Fill TLSCR0 with $00
+	call FillTilemap1 ; Fill TLSCR0 with $00
 	INC A		; A = $01
 	LD (GARDCN),A	; set Guard counter = 1
 ; Fill Tile screen 4 and Tile screen 5 with $FF
-	LD HL,TLSCR4	; Tile screen 0 start address
-	call FillTilemapFF ; Fill TLSCR4 with $FF = transparent tile
-	call FillTilemapFF ; Fill TLSCR5 with $FF = transparent tile
+	LD HL,TLSCR4	; Tile screen 4 start address
+	ld A,$FF	; filler
+	call FillTilemap2 ; Fill TLSCR4/TLSCR5 with $FF = transparent tile
 ; Set Room variables
 	LD HL,(ROOM)	; get Current Room address
 	ld A,(HL)	; room procedure low
@@ -3282,12 +3304,11 @@ LA0E5:			; redirect - Standard room initialization
 LB422:			; redirect - Standard room initialization (for 60 rooms)
 LB724:
 	LD HL,TLSCR1	; Tile screen 1 start address
-	ld a,$01	; Filler = $01 = "need update" mark
-	call FillTilemap ; Fill TLSCR1 with $01
-	;LD HL,TLSCR2	; Tile screen 2 start address
-	call FillTilemapFF ; Fill TLSCR2 with $FF = transparent tile
-	;LD HL,TLSCR3	; Tile screen 3 start address
-	call FillTilemapFF ; Fill TLSCR3 with $FF = transparent tile
+	ld A,$01	; Filler = $01 = "need update" mark
+	call FillTilemap1 ; Fill TLSCR1 with $01
+	LD HL,TLSCR2	; Tile screen 2 start address
+	ld A,$FF	; filler
+	call FillTilemap2 ; Fill TLSCR2/TLSCR3 with $FF = transparent tile
 ;
 	CALL DRALL	; Draw tile map on the screen
 ;
@@ -3538,20 +3559,28 @@ LB913:	LD A,(DE)
 	jp nz,LB911
 ; Clear Dog screen + Guard screen
 LB922:	LD HL,TLSCR3	; Tile screen 3 start address
-	call FillTilemapFF ; Fill TLSCR3 with $FF = transparent tile
-	call FillTilemapFF ; Fill TLSCR4 with $FF = transparent tile
+	ld A,$FF
+	call FillTilemap2 ; Fill TLSCR3/TLSCR4 with $FF = transparent tile
 ; Execute room procedure
-;	LD HL,(ROOM)	; get Current Room address
-;	LD A,(HL)
-;	INC HL
-;	LD H,(HL)
-;	LD L,A
 LB936:	JP LB937	; !!MUT-ARG!! room procedure address
 
 ; Standard room procedure (for 63 rooms)
 LB41F: ;redirect
+LB937:
+; Slow down updating some tiles if Guard not on the screen
+	ld A,(LB695+2)	; get Guard data higher byte
+	or A
+	jp nz,LB937_2	; have Guard => skip
+	ld HL,TLSCR1+8*30
+	ld B,30
+	ld A,1		; "need update" mark
+.loop:	ld (HL),A
+	inc HL
+	dec B
+	jp nz,.loop
+LB937_2:
 ; Loop by three objects in LA39F table
-LB937:	ld hl,LA39F	; Three objects start address
+	ld hl,LA39F	; Three objects start address
 	LD B,3
 LB93D:	PUSH BC		; save loop counter
 	ld a,(hl)	; have an object here?
