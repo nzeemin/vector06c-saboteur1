@@ -25,7 +25,7 @@ ROOM:	DEFW L791E	; Current Room address
 NJASPR:	DEFW LA0B5	; Ninja sprite address
 
 ; Current Guard data
-GARDPOS:	DEFW 0	; Current Guard position in tilemap
+GARDPOS: DEFW 0		; Current Guard position in tilemap
 GARDX:	DEFB 0		; Current Guard X position
 GARDY:	DEFB 0		; Current Guard Y position
 
@@ -39,13 +39,17 @@ DOGRTL:	DEFB $17	; Dog's right limit
 DOGDIX:	DEFB $00	; Dog changing direction: 0 = right to left, 1 = left to right
 DOGY:	DEFB $06	; Dog Y position
 
-L71D4:	DEFB $F3	; ??
-L71D5:	DEFB $01	; ??
+L71D4:	DEFB $F3	; Dog flag ??
+L71D5:	DEFB $01	; Dog sprite number 0/1/2
 
+NJAPOS:	DEFW 0		; Ninja position in tilemap: Y * 30 + X
 NJADIR:	DEFB $00	; Ninja direction: 0 = left, 1 = right
+NJAY:	DEFB 0		; Ninja Y within the room, 0 at the top
+NJAX:	DEFB 0		; Ninja X within the room
 NJAWLK:	DEFB $00	; Ninja walking phase
+NJAFAL:	DEFB $00	; Ninja falling count, to decrease Energy on hit
 
-L7343:	DEFB $07	; Counter used in movement handlers
+MVTCN:	DEFB $07	; Counter used in movement handlers
 DOGNOL:	DEFB $00	; Dog's flag: 1 = ignore left/right limit
 L7345:	DEFB $14	; Dog ??
 
@@ -55,13 +59,7 @@ GARDDIR: DEFB $01	; Guard direction
 NRJ:	DEFB $13	; Energy $04..$13
 NRJLO:	DEFB $01	; Energy lower, running bit
 
-NJAFAL:	DEFB $00	; Ninja falling count, to decrease Energy on hit
-
-NJAY:	DEFB 0		; Ninja Y within the room, 0 at the top
-NJAX:	DEFB 0		; Ninja X within the room
-NJAPOS:	DEFW 0		; Ninja position in tilemap: Y * 30 + X
-
-LA39E:	DEFB $00
+LA39E:	DEFB $00	; ?? 0 / 1
 
 ; Three objects, 8. bytes each
 ; 1st object - object thrown by Ninja
@@ -81,7 +79,7 @@ LA3AE:	DEFB $69,$00,$06,$06
 LA382:	DEFB $03	; Turret Y
 LA3B3:	DEFB $0F	; Turret X
 
-LA3B4:	DEFB $01	; ?? Guard counter
+GARDCN:	DEFB $01	; ?? Guard counter
 
 LB2FD:	DEFB $C3	; Counter for Ninja/Guard head tile change
 
@@ -1537,7 +1535,7 @@ LA3B5:	LD A,(NJAY)	; get Ninja Y
 	RET NZ
 	POP HL
 LA3BE:	LD A,$14	; !!MUT-ARG!! ??
-	LD (LA3B4),A
+	LD (GARDCN),A	; set Guard counter
 	LD A,$0B
 	LD (GARDST),A	; set Guard state = $0B = auto-gun
 	LD HL,LD504	; Sprite Ninja/Guard punching
@@ -1554,7 +1552,7 @@ LA3D1:	LD A,(NJAY)	; get Ninja Y
 	RET NZ		; yes => return
 	POP HL
 	LD A,$14
-	LD (GARDST),A	; set Guard state = $14 = throwing a knife
+	LD (GARDST),A	; set Guard state = $14 = throw knife
 	LD HL,LD504	; Sprite Ninja/Guard punching
 	LD (LA70E+1),HL	; set Guard sprite
 	JP LA6FF	; => Draw Guard on tilemap
@@ -1575,9 +1573,9 @@ LA3EE:	LD A,(NJAY)	; get Ninja Y
 	RET C
 	POP HL
 	LD A,$05
-	LD (GARDST),A	; set Guard state = $05
+	LD (GARDST),A	; set Guard state = $05 jump
 	LD A,$02
-	LD (LA3B4),A	; set Guard counter
+	LD (GARDCN),A	; set Guard counter = 2
 	LD HL,LD4B0	; Sprite Ninja/Guard jumping
 	LD (LA70E+1),HL	; set Guard sprite
 	JP LA6FF	; => Draw Guard on tilemap
@@ -1589,9 +1587,9 @@ LA418:	LD A,(NJAY)	; get Ninja Y
 	RET NZ
 	POP HL
 	LD A,$08
-	LD (GARDST),A	; set Guard state = $08
+	LD (GARDST),A	; set Guard state = $08 punch
 	LD A,$03
-	LD (LA3B4),A	; set Guard counter
+	LD (GARDCN),A	; set Guard counter = 3
 	LD HL,LD504	; Sprite Ninja/Guard punching
 	LD (LA70E+1),HL	; set Guard sprite
 	JP LA6FF	; => Draw Guard on tilemap
@@ -1602,9 +1600,9 @@ LA434:	CALL UPGARD	; Set update flags for Guard, 6x7 tiles
 	LD A,(HL)	; get Guard state
 	cp $15		; < $15 ?
 	jp nc,LA614
+	add a,a		; * 2
 	ld l,a
 	ld h,0
-	add hl,hl	; * 2
 	ld de,GuardStateTbl
 	add hl,de
 	ld a,(hl)
@@ -1636,7 +1634,7 @@ GuardStateTbl:
 	dw	LA4EB	; $14  throw knife
 
 ; Guard state = $0B = auto-gun
-LA440:	LD HL,LA3B4	; Guard counter address
+LA440:	LD HL,GARDCN	; Guard counter address
 	DEC (HL)	; decrease Guard counter
 	LD A,(HL)	; get Guard counter
 	CP $06
@@ -1723,9 +1721,9 @@ LA4D1:	DEC DE		; !!MUT-CMD!! "DEC DE" or "INC DE" instruction
 	jp nz,LA4A2
 	xor a
 	out ($00),a	; sound off
-	LD A,(LA3B4)	; get Guard counter
-	or a
-	JP NZ,LA6FF	; => Draw Guard on tilemap
+	LD A,(GARDCN)	; get Guard counter
+	or a		; 0 ?
+	JP NZ,LA6FF	; no => Draw Guard on tilemap
 	LD A,$04
 	LD (GARDST),A	; set Guard state = $04
 	JP LA6FF	; => Draw Guard on tilemap
@@ -1799,7 +1797,7 @@ LA571:	LD HL,LA0B5	; Sprite Ninja dead
 	JP LA6FF	; => Draw Guard on tilemap
 
 ; Guard state = $08 - Punching
-LA57E:	LD HL,LA3B4	; Guard counter address
+LA57E:	LD HL,GARDCN	; Guard counter address
 	DEC (HL)	; decrease Guard counter
 	JP NZ,LA6FF	; => Draw Guard on tilemap
 	ld hl,GARDST	; Guard state address
@@ -1820,11 +1818,11 @@ LA599:	ADD HL,DE
 	JP LA6FF	; => Draw Guard on tilemap
 
 ; Guard state = $05 - jump
-LA5AE:	LD HL,LA3B4	; Guard counter address
+LA5AE:	LD HL,GARDCN	; Guard counter address
 	DEC (HL)	; decrease Guard counter
 	JP NZ,LA6FF	; => Draw Guard on tilemap
 	LD A,$03
-	LD (LA3B4),A	; set Guard counter value
+	LD (GARDCN),A	; set Guard counter = 3
 	ld hl,GARDST	; Guard state address
 	LD (HL),$06	; set Guard state = $06: jump-kick
 	LD HL,LD4DA	; Sprite Ninja/Guard jump-kick
@@ -1832,11 +1830,11 @@ LA5AE:	LD HL,LA3B4	; Guard counter address
 	JP LA6FF	; => Draw Guard on tilemap
 
 ; Guard state = $06 - jump-kick
-LA5CB:	LD HL,LA3B4	; Guard counter address
+LA5CB:	LD HL,GARDCN	; Guard counter address
 	DEC (HL)	; decrease Guard counter
 	JP NZ,LA6FF	; => Draw Guard on tilemap
 	LD A,$01
-	LD (LA3B4),A	; set Guard counter value
+	LD (GARDCN),A	; set Guard counter = 1
 	ld hl,GARDST	; Guard state address
 	LD (HL),$07	; set Guard state = $07: back to standing
 	LD HL,LD4B0	; Sprite Ninja/Guard jumping
@@ -1855,7 +1853,7 @@ LA5F1:	ADD HL,DE	; now HL = address in Ninja tile screen
 	JP LA6FF	; => Draw Guard on tilemap
 
 ; Guard state = $07 - back to standing
-LA600:	LD HL,LA3B4	; Guard counter address
+LA600:	LD HL,GARDCN	; Guard counter address
 	DEC (HL)	; decrease Guard counter
 	JP NZ,LA6FF	; counter not zero => Draw Guard on tilemap
 	ld hl,GARDST	; Guard state address
@@ -1872,7 +1870,7 @@ LA614:	LD HL,NJAX	; Ninja X address
 	CALL LA418
 	LD HL,GARDST	; Guard state address
 	LD A,$0A
-	CP (HL)		; Guard state = $0A ?
+	CP (HL)		; Guard state = $0A standing ?
 	JP Z,LA6FF	; Guard state is $0A => Draw Guard on tilemap
 	LD A,$04
 	LD (HL),A	; set Guard state = $04
@@ -1890,7 +1888,7 @@ LA637:	LD B,A		; save value "Guard X - Ninja X"
 	JP Z,LA65B	; left =>
 	LD A,(GARDST)	; get Guard state
 	CP $04		; Guard state = $04 ?
-	JP Z,LA654
+	JP Z,LA654	; yes =>
 	LD A,$04
 	LD (GARDST),A	; set Guard state = $04
 	LD HL,LD486	; Sprite Ninja/Guard standing
@@ -1912,7 +1910,7 @@ LA65B:	LD A,B		; restore value "Guard X - Ninja X"
 	CP $04		; Guard state = $04 ?
 	JP NZ,LA67F	; no =>
 	LD A,$03	; walking phase 3
-	LD (GARDST),A	; set Guard state
+	LD (GARDST),A	; set Guard state = $03 walk 3
 	JP LA6FF	; => Draw Guard on tilemap
 LA67F:	LD HL,GARDX	; Guard X address
 	DEC (HL)	; decrease Guard X - move one tile left
@@ -1950,7 +1948,7 @@ LA6AF:	LD A,B
 	CP $04		; Guard state = $04 ?
 	JP NZ,LA6D2
 	LD A,$03
-	LD (GARDST),A	; set Guard state = walking phase 3
+	LD (GARDST),A	; set Guard state = $03 walk 3
 	JP LA6FF	; => Draw Guard on tilemap
 LA6D2:	LD HL,GARDX	; Guard X address
 	INC (HL)	; increase Guard X - move one tile right
@@ -1963,7 +1961,7 @@ LA6DE:	LD HL,(GARDPOS)	; get Guard position in tilemap
 	LD A,(GARDST)	; get Guard state
 	INC A		; next walking phase
 	AND $03		; 0..3
-	LD (GARDST),A	; set Guard state
+	LD (GARDST),A	; set Guard state = $03 walk 0..3
 	ADD A,A		; * 2
 	LD L,A
 	LD H,$00
@@ -2271,8 +2269,6 @@ LAEE2:	LD A,(HL)
 
 ;------------------------------------------------------------------------------
 
-L7238:	DEFW	0	; Current offset in tilemaps during tile map drawing
-
 ; Tile buffer
 LB13E:	DEFB $FE,$82,$A2,$00,$FE,$FF,$FF,$7E	; Pixel bytes
 LB146:	DEFB $32	; Attribute byte
@@ -2282,54 +2278,78 @@ LB147:	DEFB $30	; Background attribute byte
 DRALL:	xor a
 	ld h,a
 	ld l,a
-	ld (L7238),hl	; offset = 0
 	LD HL,TLSCR1	; Tile screen 1 start address
 	LD DE,$C1F7	; screen address where game screen starts
 	LD B,17		; 17 rows
-
-; Loop start
+; Loop by rows
 LB16D:	LD C,30		; 30 columns
-LB16F:	XOR A
+; Loop by columns
+LB16F:	xor A
 	CP (HL)		; Check "need update" flag in Tile screen 1
-	JP Z,LB2A9	; zero => Skip this tile rendering
-	ld (HL),A	; clear the flag
-	PUSH HL
-	PUSH BC
-	PUSH DE
-
+	jp nz,DRTILE	; non zero => tile rendering
+LB2A9:	inc d		; Next address in screen
+	inc HL		; Next address in Tile screen 1
+	dec C		; Decrease columns counter
+	jp nz,LB16F	; Continue loop by columns
+; Next tile row
+	ld a,e
+	sub $08
+	ld e,a
+	ld d,$C1
+	dec B		; Decrease rows counter
+	jp nz,LB16D	; Continue loop by rows
+	RET		; exit DRALL procedure
+;
+; Tile rendering
+DRTILE:	ld (HL),A	; clear the flag
+	PUSH HL		; save address in Tile screen 1
+	PUSH BC		; save row/column counter
+	PUSH DE		; save screen address
+;
 ; Process Tile screen 0 - background tile
-LB177:	ld hl,(L7238)	; get offset
-	ld de,TLSCR0
+; HL = address in Tile screen 1
+LB177:	ld de,TLSCR0-TLSCR1
 	add hl,de	; now HL = address in Tile screen 0
 	ld a,(hl)	; get tile from Tile screen 0
 	CP $FF		; $FF - "earth" background?
 	jp z,DRTILE_FF	; yes => special case for $FF
-LB184:
+LB184:	ex DE,HL	; now DE = address in Tile screen 0
 	LD H,$00
 	LD L,A
 	PUSH HL
 	ADD HL,HL
 	ADD HL,HL
 	ADD HL,HL
-	POP DE
-	ADD HL,DE	; * 9
-	LD DE,LF700	; Background tiles start address
-	ADD HL,DE	; now HL = tile data address
-	LD DE,LB13E	; Tile buffer address
-	LD B,$09	; 8 pixel bytes + attribute byte
-LB199:	LD A,(HL)	; get byte from tile data
-	LD (DE),A	; store the byte to tile buffer
+	POP BC
+	add HL,BC	; * 9
+	ld BC,LF700	; Background tiles start address
+	add HL,BC	; now HL = tile data address
+	LD BC,LB13E	; Tile buffer address
+LB199:
+    REPT 8		; loop fully unrolled
+	LD A,(HL)	; get byte from tile data
+	LD (BC),A	; store the byte to tile buffer
 	INC HL		; move to next byte in tile data
-	INC DE		; move to next byte in tile buffer
-	dec b
-	jp nz,LB199	; loop for 9 bytes
-	LD (DE),A	; save attribute byte once more
-
+	INC BC		; move to next byte in tile buffer
+    ENDR
+	LD A,(HL)	; get byte from tile data
+	LD (BC),A	; store the byte to tile buffer
+	INC BC		; move to next byte in tile buffer
+	LD (BC),A	; save attribute byte once more
+;
 ; Process Tile screen 2 tile - Ninja
-LB1A3:	ld hl,(L7238)	; get offset
-	ld de,TLSCR2
+; DE = address in Tile screen 0
+LB1A3:	ld hl,TLSCR2-TLSCR0
 	add hl,de	; now HL = address in Tile screen 2
 	ld a,(hl)	; get tile from Tile screen 2
+	ld DE,510
+	add HL,DE	; now HL = address in Tile screen 3
+	ld (LB1FC+1),HL	; save address for Tile screen 3 tile processing
+	add HL,DE	; now HL = address in Tile screen 4
+	ld (LB230+1),HL	; save address for Tile screen 4 tile processing
+	add HL,DE	; now HL = address in Tile screen 5
+	ld (LB263+1),HL	; save address for Tile screen 5 tile processing
+;
 	CP $FF		; $FF - transparent?
 	JP Z,LB1F9	; $FF => skip Ninja tile drawing
 	LD L,A
@@ -2385,14 +2405,14 @@ DRNJA_LT:
 	LD A,(DE)	; get byte from tile buffer
 	LD C,A
 	LD A,(HL)	; get byte from tile data (mask)
-	ld  ($ + 4), a	; Mirror byte if needed
-	ld  a, (MIRROR)	; fast mirroring
+	ld ($ + 4),a	; Mirror byte if needed
+	ld a,(MIRROR)	; fast mirroring
 	AND C		; AND with byte from the buffer - apply the mask
 	LD C,A
 	inc hl
 	LD A,(HL)	; get byte from tile data (pixels)
-	ld  ($ + 4), a	; Mirror byte if needed
-	ld  a, (MIRROR)	; fast mirroring
+	ld ($ + 4),a	; Mirror byte if needed
+	ld a,(MIRROR)	; fast mirroring
 	OR C		; OR with the byte from buffer - apply pixels
 	LD (DE),A
 	inc hl
@@ -2403,9 +2423,7 @@ DRNJA_LT:
 LB1F9:	JP LB1FC	; !!MUT-ARG!!
 
 ; Process Tile screen 3 tile - Dog
-LB1FC:	ld hl,(L7238)	; get offset
-	ld de,TLSCR3
-	add hl,de	; now HL = address in Tile screen 3
+LB1FC:	ld hl,TLSCR3	; !!MUT-ARG!! get address in Tile Screen 3
 	ld a,(hl)	; get tile from Tile screen 3
 	CP $FF		; $FF - transparent?
 	JP Z,LB230	; $FF => skip Dog tile drawing
@@ -2458,9 +2476,7 @@ DRDOG_LT:
 	jp nz,DRDOG_LT
 ;
 ; Process Tile screen 4 tile - Guard
-LB230:	ld hl,(L7238)	; get offset
-	ld de,TLSCR4
-	add hl,de	; now HL = address in Tile screen 4
+LB230:	ld hl,TLSCR4	; !!MUT-ARG!! address in Tile Screen 4
 	LD A,(HL)	; get tile from the tilemap
 	CP $FF		; $FF - transparent?
 	JP Z,LB263	; $FF => skip Guard tile drawing
@@ -2513,9 +2529,7 @@ DRGARD_LT:
 	jp nz,DRGARD_LT	; loop for all 8 bytes
 ;
 ; Process Tile screen 5 tile - front
-LB263:	ld hl,(L7238)	; get offset
-	ld de,TLSCR5
-	add hl,de	; now HL = address in Tile screen 5
+LB263:	ld hl,TLSCR5	; !!MUT-ARG!! address in Tile Screen 5
 	LD A,(HL)	; get tile from the tilemap
 	CP $FF		; $FF - transparent?
 	JP Z,LB293	; $FF => skip front tile drawing
@@ -2549,9 +2563,8 @@ LB284:	LD A,(DE)	; get byte from buffer
 	LD (DE),A	; set as current attribute
 
 ; Draw prepared tile on the screen
-LB293:
-	ld a,(LB146)	; get attribute byte
-	and $0F		; 0/2/4/8/10/12/14
+LB293:	ld a,(LB146)	; get attribute byte
+	and $0E		; 0/2/4/6/8/10/12/14 = index in DRTILE_T
 	ld l,a
 	ld h,$00
 	ld de,DRTILE_T	; Table of DRTILE strategies
@@ -2560,9 +2573,18 @@ LB293:
 	INC HL
 	LD H,(HL)	; get address high byte
 	LD L,A		; now HL = room token procedure address
-	POP DE
-	PUSH DE
+	POP DE		; restore screen address
+	PUSH DE		; store screen address again
 	JP (HL)		; => run token procedure
+DRTILE_T:
+	DEFW DRTILE_0, DRTILE_1, DRTILE_2, DRTILE_3
+	DEFW DRTILE_4, DRTILE_5, DRTILE_6, DRTILE_0
+;
+; DRTILE finalization
+LB2A6:	POP DE		; restore screen address
+	POP BC		; restore row/column counter
+	POP HL		; restore address in Tile screen 1
+	jp LB2A9	; => loop iteration end
 ;
 ; Strategy 1: pixels to 1st plane, clear 2nd plane - blue / black
 DRTILE_1:
@@ -2696,9 +2718,8 @@ DRTILE_6:
 	cpl
 	LD (de),a	; put byte on the screen
 	jp LB2A6
-;STUB
-DRTILE_0:
-	jp LB2A6
+;STUB, should be no DRTILE_0 tiles
+DRTILE_0 = LB2A6
 ; Draw tile $FF
 DRTILE_FF:
 	pop hl		; get screen address
@@ -2726,33 +2747,7 @@ DRTILE_FF:
 	inc l		; prev line
   ENDR
 	ld (hl),a
-;
-; Next column
-LB2A6:	POP DE
-	POP BC
-	POP HL
-LB2A9:	inc d		; Next address in screen
-	INC HL		; Next address in Tile screen 1
-	PUSH HL
-	ld hl,(L7238)
-	inc hl		; Next offset
-	ld (L7238),hl
-	POP HL
-	DEC C		; Decrease column counter
-	JP NZ,LB16F	; Continue loop by columns
-
-; Next tile row
-LB2CB:	ld a,e
-	sub $08
-	ld e,a
-	ld d,$C1
-	DEC B		; Decrease line counter
-	JP NZ,LB16D	; Continue loop by lines
-	RET
-
-DRTILE_T:
-	DEFW DRTILE_0, DRTILE_1, DRTILE_2, DRTILE_3
-	DEFW DRTILE_4, DRTILE_5, DRTILE_6, DRTILE_0
+	jp LB2A6
 
 ;------------------------------------------------------------------------------
 
@@ -2839,16 +2834,12 @@ LF913:			; redirect
 LB3B0:	;LD HL,LC681
 	;LD (L982B+2),HL	; set Room 982B initialization, NO NEED
 	;LD HL,LB673+1	; current dog data address, NO NEED
-	LD (L9DD0+1),HL
+	;LD (L9DD0+1),HL
 	LD HL,LC6A5
 	LD (L7C9C),HL
 	LD HL,LC671
 	LD (L947C+2),HL
 	LD (L93DF+2),HL
-	;LD HL,LB422
-	;LD (L7BD2+2),HL	; NO NEED: the only assignment for this address
-	;LD HL,LC64C
-	;LD (L791E+2),HL	; NO NEED: the only assignment for this address
 	;NOTE: Mirror table preparation was here
 	JP LB5C7
 
@@ -3038,7 +3029,7 @@ LB56B:	dec b
 	jp nz,LB56B	; delay
 	xor a
 	out ($00),a	; sound off
-	LD HL,L7343	; counter address
+	LD HL,MVTCN	; counter address
 	DEC (HL)	; decrease counter
 	JP NZ,LB8D0	; => Update Ninja on tilemap
 	LD HL,NJAX	; Ninja X address
@@ -3051,7 +3042,7 @@ LB56B:	dec b
 	LD DE,LD5AC	; Sprite Ninja jumping 3
 	LD HL,LC4F6	; Movement handler address
 	LD A,$04
-	LD (L7343),A	; set counter = 4
+	LD (MVTCN),A	; set counter = 4
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
 
 ; Routine at B596
@@ -3150,7 +3141,7 @@ LB5F5:	LD (HL),A
 	LD HL,$0097
 	LD (NJAPOS),HL	; set Ninja position in tilemap: Y * 30 + X
 	LD A,$13
-	LD (L7343),A	; set counter = 19
+	LD (MVTCN),A	; set counter = 19
   IF CVERT != 0		; Cheat code for short route to Helicopter
   	DISPLAY "CVERT cheat is ON"
 	ld a,$D4	; diskette
@@ -3213,7 +3204,7 @@ LB6BB:	LD (HL),A
 	LD HL,TLSCR0	; Tile screen 0 start address
 	call FillTilemap ; Fill TLSCR0 with $00
 	INC A		; A = $01
-	LD (LA3B4),A
+	LD (GARDCN),A	; set Guard counter = 1
 ; Fill Tile screen 4 and Tile screen 5 with $FF
 	call FillTilemap4 ; Fill TLSCR4 with $FF = transparent tile
 	call FillTilemapFF ; Fill TLSCR5 with $FF = transparent tile
@@ -3276,9 +3267,9 @@ LB724:
 	LD HL,TLSCR1	; Tile screen 1 start address
 	ld a,$01	; Filler = $01 = "need update" mark
 	call FillTilemap ; Fill TLSCR1 with $01
-	LD HL,TLSCR2	; Tile screen 2 start address
+	;LD HL,TLSCR2	; Tile screen 2 start address
 	call FillTilemapFF ; Fill TLSCR2 with $FF = transparent tile
-	LD HL,TLSCR3	; Tile screen 3 start address
+	;LD HL,TLSCR3	; Tile screen 3 start address
 	call FillTilemapFF ; Fill TLSCR3 with $FF = transparent tile
 ;
 	CALL DRALL	; Draw tile map on the screen
@@ -3306,10 +3297,10 @@ LB768:	POP HL		; restore address in Table of objects
 	dec b
 	jp nz,LB753	; continue loop by objects
 	LD A,(GARDST)	; get Guard state
-	CP $09		; dead?
-	JP Z,LB77B
+	CP $09		; Guard dead?
+	JP Z,LB77B	; yes => skip
 	LD A,$0A
-	LD (GARDST),A	; set Guard state = $0A
+	LD (GARDST),A	; set Guard state = $0A standing
 
 ; Game loop start
 LB77B:	EI
@@ -3556,6 +3547,12 @@ LBA21:	POP BC		; restore loop counter
 	DEC B
 	JP NZ,LB93D	; continue loop by objects
 ;
+; Decrement Explosion counter first, so the last frame still marks dirty
+	ld HL,LBAB2	; Explosion counter address
+	ld A,(HL)
+	or A
+	jp z,LBA2A_skip	; no explosion => skip
+	dec (HL)	; decrement counter
 ; Fill "need update" marks for Explosion
 LBA2A:	LD HL,TLSCR1+165	; !!MUT-ARG!!
 LBA2D:	LD B,$03	; !!MUT-ARG!! height, rows
@@ -3572,6 +3569,7 @@ LBA32:	LD (HL),$01
 	POP DE
 	dec b
 	jp nz,LBA2F
+LBA2A_skip:
 ;
 	CALL DRALL	; Draw tile map on the screen
 ;
@@ -3581,7 +3579,6 @@ LBA32:	LD (HL),$01
 	XOR A
 	CP (HL)
 	jp z,LB77B	; no Explosion => Game loop start
-	dec (HL)	; decrement Explosion counter
 	call LBA52	; Draw Explosion image and make some noise
 	jp LB77B	; => Game loop start
 
@@ -3702,12 +3699,16 @@ LB9E4:	LD A,(GARDST)	; get Guard state
 	JP Z,LBAD5	; already dead =>
 	LD A,$09
 	LD (GARDST),A	; set Guard state = $09 dead
+	push HL
 	CALL INCPAYS	; Increase PAY value by 100 - Guard killed by weapon
 	DEFB 1		; 1 hundred
+	pop HL
 	JP LBAD5	; => delete the object
 ; Ninja hit by the object
-LBA0C:	LD B,20		; Ninja hit by the object
+LBA0C:	push HL
+	LD B,20		; Ninja hit by the object
 	CALL NRJDEC	; Decrease Energy by B = 20
+	pop HL
 	;JP LBAD5	; => delete the object
 ;
 ; This object should be deleted, Granade explode
@@ -3736,7 +3737,6 @@ LBAF0:	LD HL,LBAB2	; Explosion counter address
 	LD DE,TLSCR1-31	; + Tile screen 1 - 31
 	ADD HL,DE
 	LD (LBA2A+1),HL	; set Tile screen 1 address
-	;LD (LBA8E+1),HL	; NO NEED set screen attributes address
 	LD A,(LA39F+5)	; get object Y
 	ADD A,A		; * 2
 	ld l,a
@@ -3785,18 +3785,13 @@ LBB72:	or a		; left limit?
 LBB7C:	LD A,B
 	LD (LBA2D+1),A	; set height
 	LD (LBA5D+1),A
-	;LD (LBA91+1),A	; NO NEED, attributes
 	LD A,C
 	LD (LBA2F+1),A	; set width
 	LD (LBA5F+1),A
-	;LD (LBA96+1),A	; NO NEED, attributes
 	LD (LBA2A+1),HL	; address in Tile screen 1
 	LD HL,(LBA57+1)	; get screen address
 	ADD HL,DE
 	LD (LBA57+1),HL	; set screen address
-	;LD HL,(LBA8E+1)	; NO NEED, attributes
-	;ADD HL,DE
-	;LD (LBA8E+1),HL
 ; Delete the object
 LBBA7:	XOR A
 LBBA8:	ld (LA39F),a	; !!MUT-ARG!! set object empty
@@ -3835,37 +3830,13 @@ LBA67:	LD A,(DE)	; get pixels
 	ld l,a
 	dec b
 	jp nz,LBA5F
-LBA8E:	;LD HL,$E8D0	; !!MUT-ARG!! address in screen attributes
-LBA91:	;LD B,$03	; !!MUT-ARG!!
-	;LD DE,$0020
-LBA96:	;LD C,$03	; !!MUT-ARG!!
-	;PUSH HL
-LBA99:	;LD A,(HL)
-	;AND $F8
-	;OR $42
-	;LD (HL),A	; set attribute
-	;INC HL
-	;DEC C
-	;JP NZ,LBA99
-	;POP HL
-	;ADD HL,DE
-	;dec b
-	;jp nz,LBA96
-	;LD A,$72
-LBAA9:	;LD ($E8F1),A	; !!MUT-ARG!! address in screen attributes
+;NOTE: Screen attributes change removed
 	xor a
 	out ($00),a	; Sound off
 	ret
 
 LBAB2:	DEFB $00	; ??
 
-; Set "need update" mark for object IX
-;LBBAE:	LD L,(IX+$01)
-;	LD H,(IX+$02)
-; 	LD DE,TLSCR1	; Tile screen 1 start address
-;	ADD HL,DE
-;	LD (HL),$01	; set "need update" mark
-;	RET
 ; Set "need update" mark for object HL
 LBBAE_HL:
 	push hl
@@ -3991,9 +3962,9 @@ LBC4D:	;LD (HL),$20
 	JP LDF37
 
 ; Movement handler: Ninja standing
-
+LBC55:
 ; Increase Energy if needed
-LBC55:	LD HL,LB5C5	; Ninja standing counter address
+	LD HL,LB5C5	; Ninja standing counter address
 	DEC (HL)	; decrease counter
 	JP NZ,LBC76
 	LD (HL),$02	; reload the counter
@@ -4180,7 +4151,7 @@ LBDC2:	ADD HL,DE	; now HL = address in Guard tilemap
 	CALL LB596	; Noise sound
 	CALL INCPAYS	; Increase PAY value by 500 - Guard killed by punch/kick
 	DEFB 5		; 5 hundreds
-LBDD4:	LD HL,LBBD4	; Movement handler address
+LBDD4:	LD HL,LBBD4	; Movement handler: Ninja punching
 	LD DE,LD504	; Sprite Ninja/Guard punching
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
 
@@ -4196,13 +4167,13 @@ LBDDD:	LD A,(INPUTB)	; get Input bits
 	CP (HL)
 	JP NZ,LBF7B
 	LD A,$0B
-	LD (L7343),A	; set counter = 11
+	LD (MVTCN),A	; set counter = 11
 	LD HL,TLSCR0+44
 	LD (LBE0D+1),HL
 	LD (LBE1C+1),HL
 	LD HL,TLSCR1+302
 	LD (LBA2A+1),HL
-	LD HL,LBE0D	; Movement handler
+	LD HL,LBE0D	; Movement handler: opening roof
 	LD DE,LD486	; Sprite Ninja/Guard standing
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
 
@@ -4222,7 +4193,7 @@ LBE1C:	LD HL,TLSCR0+55	; !!MUT-ARG!!
 	LD DE,$01FD	; 509
 	ADD HL,DE
 	LD (HL),A
-	LD HL,L7343	; counter address
+	LD HL,MVTCN	; counter address
 	DEC (HL)	; decrease counter
 	JP NZ,LB8D0	; => Update Ninja on tilemap
 	LD (HL),34	; set the counter for Helicopter moving up
@@ -4241,7 +4212,7 @@ LBE3A:	LD (HL),A
 	LD DE,TLSCR1+211
 	ld b,$D1	; 210 - 1 = 7 rows
 	call LDIR_B
-	LD HL,LC094	; Movement handler (helicopter?)
+	LD HL,LC094	; Movement handler: helicopter moving up
 	LD DE,LC0E6	; Empty sprite
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
 
@@ -4250,7 +4221,7 @@ LBE5A:	LD HL,LBE63	; Movement handler: Ninja dead
 	LD DE,LD558	; Sprite Ninja sitting
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
 
-; Movement handler (B8CE handler): Ninja dead
+; Movement handler: Ninja dead
 LBE63:	LD A,$C9	; command = $C9 RET
 	LD (NRJDEC),A	; set command = RET = disable Energy decrease
 	LD HL,LBEB3	; Movement handler: Game Over
@@ -4307,16 +4278,7 @@ LBEB3:	LD HL,LBEEF	; !!MUT-ARG!! two-line message address
 	CALL PRSTRS	; Print string 2nd line
 	DEFW $C6CF	; screen address
 	DEFB $14
-	;LD HL,$E868
-	;LD B,$0F
-LBECB:	;LD (HL),$0F	; set attribute
-	;INC HL
-	;DJNZ LBECB
-	;LD HL,$E8A6
-	;LD B,$14
-LBED5:	;LD (HL),$0F
-	;INC HL
-	;DJNZ LBED5
+;
 	CALL LF9B9	; Pause, then wait for any key pressed
 	;NOP
 	;NOP
@@ -4325,11 +4287,8 @@ LBEDF:	NOP		; !!MUT-CMD!!
 	;NOP
 	;NOP
 	;NOP
-	;NOP
-	;NOP
-	;NOP
-	LD A,$0A	; "LD A,(BC)" instruction code
-	LD (LBEDF),A
+;	LD A,$0A	; "LD A,(BC)" instruction code
+;	LD (LBEDF),A
 	;JP LBC0D	; => Title picture and music, then go to Main menu
 	JP LF9E7
 
@@ -4343,7 +4302,7 @@ LBF7B:	LD HL,TLSCR0+2	; Tile screen 0 + 2
 	CP (HL)
 	JP C,LB8D0	; => Update Ninja on tilemap
 	LD A,$03
-	LD (L7343),A	; set counter = 3
+	LD (MVTCN),A	; set counter = 3
 	LD A,(NJADIR)	; get Ninja direction
 	or a		; left?
 	LD A,(INPUTB)	; get Input bits
@@ -4355,7 +4314,7 @@ LBFA0:	and $02		; BIT 1,A	; check LEFT bit
 	CALL NZ,LC4E8	; yes =>
 LBFA5:	LD HL,LC339	; Movement handler: Ninja jumping
 	LD A,$02
-	LD (L7343),A	; set counter = 2
+	LD (MVTCN),A	; set counter = 2
 	LD DE,LD4B0	; Sprite Ninja/Guard jumping
 
 ; Set movement handler = HL, set Ninja sprite = DE
@@ -4426,7 +4385,7 @@ LC056:	LD HL,LBF12	; "ESCAPE" / "MISSION SUCCESSFUL"
 
 ; Movement handler: helicopter moving up
 ; Scrolling block of 17x15 tiles, scroll 4 lines up
-LC094:	LD HL,L7343	; counter address
+LC094:	LD HL,MVTCN	; counter address
 	DEC (HL)	; decrease counter
 	JP Z,LBFD5	; zero => Escaped; final messages, then Game Over
 	ld a,1
@@ -4634,7 +4593,7 @@ LC2A2:	LD HL,NJAX	; Ninja X address
 LC2BB:	ld a,(INPUTB)
 	and $08		; BIT 3,A	; check for UP bit
 	LD A,$07
-	LD (L7343),A	; set counter = 7
+	LD (MVTCN),A	; set counter = 7
 	CALL NZ,LC4E8
 	LD A,(NJAWLK)
 	INC A		; next walking phase
@@ -4700,7 +4659,7 @@ LC319:	LD A,$18
 	JP LB66A	; => Current Room changed
 
 ; Movement handler (B8CE handler): Ninja jumping
-LC339:	LD HL,L7343	; counter address
+LC339:	LD HL,MVTCN	; counter address
 	DEC (HL)	; decrease counter
 	JP NZ,LB8D0	; => Update Ninja on tilemap
 	LD A,(NJADIR)	; get Ninja direction
@@ -4738,7 +4697,7 @@ LC37D:	ADD HL,DE
 	LD HL,LC4A7	; Movement handler
 	LD DE,LD4DA	; Sprite Ninja/Guard jump-kick
 	LD A,$03
-	LD (L7343),A	; set counter = 3
+	LD (MVTCN),A	; set counter = 3
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
 
 ; Check if tile is a ladder
@@ -4906,7 +4865,7 @@ LC498:	LD HL,NJAY	; Ninja Y address
 LC4A4:	LD A,(NJADIR)	;get Ninja direction
 
 ; ?? Movement handler
-LC4A7:	LD HL,L7343	; counter address
+LC4A7:	LD HL,MVTCN	; counter address
 	DEC (HL)	; decrease counter
 	JP NZ,LB8D0	; => Update Ninja on tilemap
 	LD HL,(NJAPOS)	; get Ninja position in tilemap
@@ -4928,11 +4887,11 @@ LC4BE:	ADD HL,DE
 LC4D0:	LD HL,LC4DE	; Movement handler address
 	LD DE,LD4B0	; Sprite Ninja/Guard jumping
 	LD A,$01
-	LD (L7343),A	; set counter = 1
+	LD (MVTCN),A	; set counter = 1
 	JP LBFB0	; Set movement handler = HL, Ninja sprite = DE
 
 ; ?? Movement handler
-LC4DE:	LD HL,L7343	; counter address
+LC4DE:	LD HL,MVTCN	; counter address
 	DEC (HL)	; decrease counter
 	JP NZ,LB8D0	; => Update Ninja on tilemap
 	JP LC226	; => Ninja standing
@@ -4969,7 +4928,7 @@ LC50D:	LD A,(NJADIR)	; get Ninja direction
 	LD (NJAPOS),HL	; set Ninja position in tilemap
 LC525:	CALL LC57B	; Check for ??
 	JP NZ,LC533
-	LD HL,L7343	; counter address
+	LD HL,MVTCN	; counter address
 	DEC (HL)	; decrease counter
 	JP NZ,LB8D0
 	JP LC538
@@ -5172,7 +5131,7 @@ LC6A5:	LD A,(NJAX)	; get Ninja X
 	CP $0C
 	JP NZ,LB937	; => Standard room procedure
 	LD A,$4B
-	LD (L7343),A	; set counter = 75
+	LD (MVTCN),A	; set counter = 75
 	ex de,hl
 	ld hl,(NJAPOS)	; get Ninja position in tilemap
 	ex de,hl
@@ -5218,7 +5177,7 @@ LC6F5:	LD HL,TLSCR1+450
 	LD (HL),$01
 	ld b,$1D
 	call LDIR_B
-	LD HL,L7343	; counter address
+	LD HL,MVTCN	; counter address
 	DEC (HL)	; decrease counter
 	JP Z,LC226	; => Ninja standing
 	JP LB8D0	; => Update Ninja on tilemap
@@ -5486,7 +5445,7 @@ LE2A7:	CALL LDFE6	; Unhighlight Menu item
 	LD HL,LE204	; "YOUR MISSION"
 	CALL PRSTRS	; Print string "YOUR MISSION"
 	DEFW $CECF
-	DEFB $0C
+	DEFB 12
 	CALL PRSTRS	; Print string "WILL BE"
 	DEFW $D0C7
 	DEFB 7
@@ -5778,13 +5737,13 @@ LF9F4:	jp LF913
 LF9F9:	LD HL,$00B4
 	LD B,$01
 	CALL LFA11
-	LD HL,LBDAF
+	LD HL,LBDAF	; Switch Ninja to standing
 	RET
-	LD HL,$018F
-	LD B,$10
-	CALL LFA11
-	LD A,(DOGST)
-	RET
+;	LD HL,$018F
+;	LD B,$10
+;	CALL LFA11
+;	LD A,(DOGST)
+;	RET
 
 ; Routine at FA11
 LFA11:	LD A,$10
@@ -5806,13 +5765,12 @@ LFA16:	DEC A
 
 ; Routine at FA28
 LFA28:	LD B,$01
-	CALL LF9A1
-	RET
+	jp LF9A1	; Noise sound
 
 ; Decrease Energy by B + Sound
 LFA31:	CALL NRJDEC	; Decrease Energy by B
 	LD B,$01
-	jp LF9A1	; Sound
+	jp LF9A1	; Noise sound
 
 ;----------------------------------------------------------------------------
 
