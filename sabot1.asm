@@ -643,8 +643,8 @@ SINFO:	DEFB 18
 	DEFB $00
 	DEFB 15
 	DEFM "VECTOR-06C PORT"
-	DEFB 12
-	DEFM "2025 NZEEMIN"
+	DEFB 7
+	DEFM "NZEEMIN"
 	DEFB $00
 	DEFB $00
 	DEFB 9
@@ -3060,19 +3060,17 @@ LB59E:	DEC C
 	jp nz,LB598
 	RET
 
-; Fill 510 bytes of tilemap TLSCR4 with $FF
-FillTilemap4:
-	LD HL,TLSCR4	; Tile screen 0 start address
 ; Fill 510 bytes of tilemap HL with $FF
 FillTilemapFF:
 	ld A,$FF
 ; Fill 510 bytes of tilemap HL with filler A
 FillTilemap:
-	ld b,255	; 510 / 2
-.loop:	ld (hl),a	; fill with $00
+	ld b,51		; 510 / 10
+.loop:
+    REPT 10
+	ld (hl),a
 	inc hl
-	ld (hl),a	; fill with $00
-	inc hl
+    ENDR
 	dec b
 	jp nz,.loop
 	ret
@@ -3124,7 +3122,7 @@ LB5F5:	LD (HL),A
 	LD A,$FA
 	LD (LB2FD),A
 	LD A,$C8
-	LD A,$D2 ;DEBUG Granade
+	;LD A,$D2 ;DEBUG Granade
 	LD (LBD79+1),A
 	CALL L7472
 	;DI
@@ -3219,20 +3217,26 @@ LB6BB:	LD (HL),A
 	INC A		; A = $01
 	LD (GARDCN),A	; set Guard counter = 1
 ; Fill Tile screen 4 and Tile screen 5 with $FF
-	call FillTilemap4 ; Fill TLSCR4 with $FF = transparent tile
+	LD HL,TLSCR4	; Tile screen 0 start address
+	call FillTilemapFF ; Fill TLSCR4 with $FF = transparent tile
 	call FillTilemapFF ; Fill TLSCR5 with $FF = transparent tile
-;
+; Set Room variables
 	LD HL,(ROOM)	; get Current Room address
+	ld A,(HL)	; room procedure low
 	INC HL
+	ld D,(HL)	; room procedure high
 	INC HL
+	ld E,A
+	ex DE,HL
+	ld (LB936+1),HL	; store room procedure address
+	ex DE,HL
 	LD A,(HL)	; get Room init address low byte
 	INC HL
-	PUSH HL
-	LD H,(HL)	; get Room init address high byte
-	LD L,A
+	LD D,(HL)	; get Room init address high byte
+	LD E,A
+	ex DE,HL
 	LD (LB6F1+1),HL	; set Room init address
-	POP HL
-	LD DE,$0009
+	LD HL,$0009
 	ADD HL,DE	; now HL = room sequence start address
 
 LB6EE:	LD A,(HL)	; get next token
@@ -3485,10 +3489,9 @@ LB8C9:	XOR A
 	LD (LA39E),A
 LB8CD:	JP LBEB3	; !!MUT-ARG!! => run handler
 
-; Update Ninja on tilemap
+; Update Ninja on tilemap, clear Dog+Guard screen, execute room procedure
 LB8D0:	CALL UPNJA	; Set update flags for Ninja, 6x7 tiles
-	call FillTilemap4 ; Fill TLSCR4 with $FF = transparent tile
-
+;
 ; Draw Ninja on tilemap
 LB8E0:	LD HL,(NJAPOS)	; get Ninja position in tilemap
 	LD A,(NJADIR)	; get Ninja direction
@@ -3533,14 +3536,17 @@ LB913:	LD A,(DE)
 	POP DE
 	dec b
 	jp nz,LB911
+; Clear Dog screen + Guard screen
 LB922:	LD HL,TLSCR3	; Tile screen 3 start address
 	call FillTilemapFF ; Fill TLSCR3 with $FF = transparent tile
-	LD HL,(ROOM)	; get Current Room address
-	LD A,(HL)
-	INC HL
-	LD H,(HL)
-	LD L,A
-	JP (HL)
+	call FillTilemapFF ; Fill TLSCR4 with $FF = transparent tile
+; Execute room procedure
+;	LD HL,(ROOM)	; get Current Room address
+;	LD A,(HL)
+;	INC HL
+;	LD H,(HL)
+;	LD L,A
+LB936:	JP LB937	; !!MUT-ARG!! room procedure address
 
 ; Standard room procedure (for 63 rooms)
 LB41F: ;redirect
@@ -3811,8 +3817,8 @@ LBBA8:	ld (LA39F),a	; !!MUT-ARG!! set object empty
 	ret
 
 ; Draw Explosion image and make some noise
-LBA52:	;LD A,$10
-	;OUT ($FE),A
+LBA52:	ld A,1
+	out ($00),a	; Sound on
 LBA57:	LD HL,$C0D0	; !!MUT-ARG!! address on the screen
 LBA5A:	LD DE,LABE5	; !!MUT-ARG!! Explosion image address
 LBA5D:	LD B,3		; !!MUT-ARG!! height 1..3
@@ -4403,29 +4409,37 @@ LC094:	LD HL,MVTCN	; counter address
 	JP Z,LBFD5	; zero => Escaped; final messages, then Game Over
 	ld a,1
 	out ($00),a	; sound on
-	LD HL,$C7F3
-	LD DE,$C7F7
-	LD B,15*8
-LC0AB:	push bc
-	PUSH HL
-	PUSH DE
-	ld b,17
-.loop:	ld a,(hl)
-	ld (de),a
-	inc h
-	inc d
-	dec b
-	jp nz,.loop
-	POP DE
-	POP HL
-	dec e
-	dec l
-	pop bc
-	dec b
-	jp nz,LC0AB
+	; Scroll plane 1
+	ld HL,$C7F3
+	ld DE,$C7F7
+	call LC0SC	; scroll one plane
+	; Scroll plane 2
+	ld HL,$E7F3	; $C7 + $20 = $E7
+	ld DE,$E7F7
+	call LC0SC	; scroll one plane
 	xor a
 	out ($00),a	; sound off
 	JP LB8D0	; => Update Ninja on tilemap
+;
+; Scroll one plane: 17 columns x 120 lines, 4 lines up
+LC0SC:	ld B,15*8
+.loop2:
+	PUSH HL
+	PUSH DE
+	ld C,17
+.loop:	ld a,(hl)
+	ld (de),a
+	inc H
+	inc D
+	dec C
+	jp nz,.loop
+	POP DE
+	POP HL
+	dec E
+	dec L
+	dec B
+	jp nz,.loop2
+	ret
 
 ; Ninja on ladder
 LC12E:	LD HL,LC3D9	; Movement handler for Ninja on ladder
