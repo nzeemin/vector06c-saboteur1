@@ -1303,6 +1303,7 @@ L9DF1:	dec b
 
 ; Room 94AB initialization
 LA0DF:	LD HL,LA1E1	; Guard data address
+;
 ; Initialize a guard, then Standard room initialization
 LA0E2:	CALL LB40A	; Initialize a guard
 	JP LB422	; Standard room initialization
