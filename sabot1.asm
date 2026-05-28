@@ -503,11 +503,11 @@ LE217:	DEFM "EXTREMELY EASY"
 ; +$02: Turret counter value
 ; +$03/$04: two digits for TIME value
 ; +$05/$06: two digits for BOMB timer
-; +$07: flag for wall in room 97A6
-; +$08: count for wall in room 9739: $01 = no wall, $07 = put wall
-; +$09: count for wall in room 7F48
-; +$0A: count for wall in room 8D5C
-; +$0B: count for wall in room 8F20: $01 = no wall, $09 = put wall
+; +$07: tile for wall in room 97A6
+; +$08: token for wall in room 9739
+; +$09: token for wall in room 7F48
+; +$0A: token for wall in room 8D5C
+; +$0B: token for wall in room 8F20
 ; +$0C: 3-char string for level bonus
 ; +$0F: level bonus value
 ; +$10/$11: room for BOMB placement
@@ -515,7 +515,7 @@ LE217:	DEFM "EXTREMELY EASY"
 ; Level 1 "EXTREMELY EASY"
 LE38C:	DEFB $14,$19,$32
 	DEFM "9999"
-	DEFB $00,$01,$01,$01,$01
+	DEFB $00,$0E,$0E,$0E,$0E
 	DEFM " 10"
 	DEFB $0A
 	DEFW L9E22
@@ -523,7 +523,7 @@ LE38C:	DEFB $14,$19,$32
 ; Level 2 "VERY EASY"
 LE3A0:	DEFB $12,$0F,$2D
 	DEFM "9995"
-	DEFB $00,$01,$01,$01,$01
+	DEFB $00,$0E,$0E,$0E,$0E
 	DEFM " 20"
 	DEFB $14
 	DEFW L9E22
@@ -531,7 +531,7 @@ LE3A0:	DEFB $12,$0F,$2D
 ; Level 3 "EASY"
 LE3B4	DEFB $10,$0C,$28
 	DEFM "9590"
-	DEFB $00,$07,$01,$01,$01
+	DEFB $00,$26,$0E,$0E,$0E
 	DEFM " 30"
 	DEFB $1E
 	DEFW L924E
@@ -539,7 +539,7 @@ LE3B4	DEFB $10,$0C,$28
 ; Level 4 "SLIGHTLY EASY"
 LE3C8	DEFB $0E,$0A,$23
 	DEFM "9080"
-	DEFB $FF,$01,$01,$01,$09
+	DEFB $FF,$0E,$0E,$0E,$28
 	DEFM " 50"
 	DEFB $32
 	DEFW L8608
@@ -547,7 +547,7 @@ LE3C8	DEFB $0E,$0A,$23
 ; Level 5 "MODERATE"
 LE3DC	DEFB $0C,$09,$1E
 	DEFM "9070"
-	DEFB $FF,$01,$01,$07,$01
+	DEFB $FF,$0E,$0E,$26,$0E
 	DEFM " 70"
 	DEFB $46
 	DEFW L8689
@@ -555,7 +555,7 @@ LE3DC	DEFB $0C,$09,$1E
 ; Level 6 "SLIGHTLY HARD"
 LE3F0	DEFB $0A,$07,$19
 	DEFM "8560"
-	DEFB $FF,$07,$01,$07,$01
+	DEFB $FF,$26,$0E,$26,$0E
 	DEFM "100"
 	DEFB $64
 	DEFW L8BAB
@@ -563,7 +563,7 @@ LE3F0	DEFB $0A,$07,$19
 ; Level 7 "HARD"
 LE404	DEFB $08,$06,$14
 	DEFM "8550"
-	DEFB $FF,$07,$08,$07,$01
+	DEFB $FF,$26,$27,$26,$0E
 	DEFM "130"
 	DEFB $82
 	DEFW L8D5C
@@ -571,7 +571,7 @@ LE404	DEFB $08,$06,$14
 ; Level 8 "VERY HARD"
 LE418	DEFB $05,$05,$0F
 	DEFM "8050"
-	DEFB $FF,$07,$08,$07,$09
+	DEFB $FF,$26,$27,$26,$28
 	DEFM "170"
 	DEFB $AA
 	DEFW L8279
@@ -579,7 +579,7 @@ LE418	DEFB $05,$05,$0F
 ; Level 9 "EXTREMELY HARD"
 LE42C:	DEFB $02,$03,$0A
 	DEFM "7040"
-	DEFB $FF,$07,$08,$07,$09
+	DEFB $FF,$26,$27,$26,$28
 	DEFM "250"
 	DEFB $FA
 	DEFW L8608
@@ -740,7 +740,7 @@ L62B8: 	LD A,(DE)	; get picture byte
  	RET
 
 ; Room token #00: Barrel, 3x3 tiles 7C21; params: 2 bytes (address)
-LB38F:	POP HL
+LB38F:	;POP HL
 	INC HL
 	LD A,(HL)
 	INC HL
@@ -764,12 +764,18 @@ LB39D:	LD A,(DE)
 	JP NZ,LB39B
 	JP LB702	; => Proceed to the next room token
 
+; Room token #0B: Put one tile $2A at the given address; params: 2 bytes (address)
+RTOK0B:	POP HL		; Restore token sequence address
+	INC HL		; Skip token byte
+	ld C,$2A	; tile $2A
+	jp L7351	; => get address and do fill
+;
 ; Room token #0E: Put one tile at the given address; params: 3 bytes (tile, address)
-L734D:	POP HL		; Restore token sequence address
+RTOK0E:	POP HL		; Restore token sequence address
 	INC HL		; Skip token byte
 	LD C,(HL)	; get tile byte
 	INC HL
-	LD A,(HL)	; get address low byte
+L7351:	LD A,(HL)	; get address low byte
 	INC HL
 	PUSH HL
 	LD H,(HL)	; get address high byte
@@ -777,24 +783,35 @@ L734D:	POP HL		; Restore token sequence address
 	LD (HL),C	; put tile into tilemap
 	JP LB702	; => Proceed to the next room token
 
-; Room token #0D: Set border color; params: 1 byte
-L7359:	POP HL		; Restore token sequence address
-	INC HL		; Skip token byte
-	LD A,(HL)	; get byte
-	PUSH HL
-	;ld (BorderColor),a
-	JP LB702	; => Proceed to the next room token
+; Room token #21..#30: Fill to down N tiles; params: 3 bytes (filler, address);
+; count/height = token lower bits plus one
+; A = token byte
+RTOK2X:	INC HL		; Skip token byte
+	and $1F		; 1..16
+	inc A		; 2..17 = count/height
+	ld B,A		; count
+	ld DE,30	; shift = 30
+	JP L7388	; => get tile and offset, do fill
 
-; Room token #01: Fill downward; params: 4 bytes (count, filler, address)
-L7381:	LD DE,30	; +30
+; Room token #0C: Fill to right with $FF; params: 3 bytes (count, address)
+RTOK0C:	LD DE,$0001	; Move right
+	POP HL		; Restore token sequence address
+	INC HL		; Skip token byte
+	LD B,(HL)	; get count byte
+	INC HL
+	ld C,$FF
+	jp L738A	; => get address and do fill
 ;
+; Room token #04: Fill to right; params: 4 bytes (count, filler, address)
+RTOK04:	LD DE,$0001	; Move right
+	;JP L7384
 L7384:	POP HL		; Restore token sequence address
 	INC HL		; Skip token byte
 	LD B,(HL)	; get count byte
 	INC HL
-	LD C,(HL)	; get tile byte
+L7388:	LD C,(HL)	; get tile byte
 	INC HL
-	LD A,(HL)	; get address low byte
+L738A:	LD A,(HL)	; get address low byte
 	INC HL
 	PUSH HL
 	LD H,(HL)	; get address high byte
@@ -805,18 +822,8 @@ L738F:	LD (HL),C
 	jp nz,L738F
 	JP LB702	; => Proceed to the next room token
 
-; Room token #0A: Fill down-right; params: 4 bytes (count, filler, address)
-L7395:	LD DE,$001F	; 30 + 1 (move down/right)
-	JP L7384
-; Room token #0B: Fill down-left; params: 4 bytes (count, filler, address)
-L739A:  LD DE,$001D	; 30 - 1 (move down/left)
-	JP L7384
-; Room token #02: Fill to right; params: 4 bytes (count, filler, address)
-L739F:	LD DE,$0001	; Move right
-	JP L7384
-
 ; Room token #06: Fill triangle from wide top
-L73A4:	LD A,$23	; A = "INC HL" command
+RTOK06:	LD A,$23	; A = "INC HL" command
 ;
 L73A6:	LD (L73BB),A	; set the command
 	POP HL		; Restore token sequence address
@@ -845,7 +852,7 @@ L73BB:	INC HL		; !!MUT-CMD!! "INC HL" or "DEC HL" - move to next column
 	JP LB702	; => Proceed to the next room token
 
 ; Room token #07: Fill triangle from wide bottom; params: 4 bytes (filler, count, address)
-L73C5:	LD A,$23	; A = "INC HL" command
+RTOK07:	LD A,$23	; A = "INC HL" command
 ;
 L73C7:	LD (L73DE),A	; set the command
 	POP HL		; Restore token sequence address
@@ -877,23 +884,28 @@ L73DE:	INC HL		; !!MUT-CMD!! "INC HL" or "DEC HL" - move right/left
 	JP LB702	; => Proceed to the next room token
 
 ; Room token #08: Fill triangle from wide bottom; params: 4 bytes (filler, count, address)
-L73EB:	LD A,$2B	; A = "DEC HL" command
+RTOK08:	LD A,$2B	; A = "DEC HL" command
 	JP L73C7
 
 ; Room token #09: Fill triangle from wide top; params: 4 bytes (filler, count, address)
-L73EF:	LD A,$2B	; A = "DEC HL" command
+RTOK09:	LD A,$2B	; A = "DEC HL" command
 	JP L73A6
 
-; Room token #04: Fill whole Tile screen 0 with one tile; params: 1 byte (filler)
-L73F3:	POP HL		; Restore token sequence address
-	INC HL		; Skip token byte
-	LD A,(HL)	; get tile byte
-	PUSH HL
+; Room token #05: Fill entire screen with $FF; no params
+RTOK05:	POP HL		; Restore token sequence address
+	ld A,$FF	; tile byte $FF
+	jp L73F6	; => Fill entire screen
+;
+; Room token #0D: Fill entire screen, use token as filler; no params
+RTOKFI:	POP HL		; Restore token sequence address
+	LD A,(HL)	; get token byte as tile byte
+	;jp L73F6	; and fill entire screen
+L73F6:	PUSH HL
 	LD HL,TLSCR0	; Tile screen 0 start address
 	call FillTilemap1 ; Fill TLSCR0 with tile A
 	JP LB702	; => Proceed to the next room token
 
-; Room token #05: Copy block of tiles; params: 6 bytes (width, height, srcaddr, address)
+; Room token #05: UNUSED Copy block of tiles; params: 6 bytes (width, height, srcaddr, address)
 L7406:	POP HL		; Restore token sequence address
 	INC HL		; Skip token byte
 	LD B,(HL)	; get width byte
@@ -904,7 +916,7 @@ L7406:	POP HL		; Restore token sequence address
 	INC HL
 	LD D,(HL)	; get source address high byte
 	INC HL
-	LD A,(HL)	; get address low byte
+L7410:	LD A,(HL)	; get address low byte
 	INC HL
 	PUSH HL
 	LD H,(HL)	; get address high byte
@@ -928,47 +940,53 @@ L7417:	LD A,(DE)
 	JP LB702	; => Proceed to the next room token
 
 ; Room token #0C: Copy block of tiles N times; params: 6 bytes (srcaddr, width, count, address)
-L742B:	POP HL		; Restore token sequence address
+; L742B:	POP HL		; Restore token sequence address
+; 	INC HL		; Skip token byte
+; 	LD E,(HL)	; get source address low byte
+; 	INC HL
+; 	LD D,(HL)	; get source address high byte
+; 	INC HL
+; 	LD C,(HL)	; get width byte
+; 	INC HL
+; 	LD B,(HL)	; get height byte
+; 	INC HL
+; 	LD A,(HL)	; get address low byte
+; 	INC HL
+; 	PUSH HL
+; 	LD H,(HL)	; get address high byte
+; 	LD L,A
+; L743A:	PUSH HL
+; 	PUSH BC
+; 	PUSH DE
+; L743D:	LD A,(DE)
+; 	LD (HL),A
+; 	INC HL
+; 	INC DE
+; 	DEC C
+; 	JP NZ,L743D	; continue loop by columns
+; 	POP DE
+; 	POP BC
+; 	POP HL
+; 	PUSH DE
+; 	LD DE,$001E	; 30
+; 	ADD HL,DE
+; 	POP DE
+; 	dec b
+; 	jp nz,L743A	; continue loop by rows
+; 	JP LB702	; => Proceed to the next room token
+
+; Room token #0F: Fill rectangle with $FF; params: 4 bytes (width, height, address)
+RTOK0A:	POP HL		; Restore token sequence address
 	INC HL		; Skip token byte
-	LD E,(HL)	; get source address low byte
-	INC HL
-	LD D,(HL)	; get source address high byte
-	INC HL
-	LD C,(HL)	; get width byte
-	INC HL
-	LD B,(HL)	; get height byte
-	INC HL
-	LD A,(HL)	; get address low byte
-	INC HL
-	PUSH HL
-	LD H,(HL)	; get address high byte
-	LD L,A
-L743A:	PUSH HL
-	PUSH BC
-	PUSH DE
-L743D:	LD A,(DE)
-	LD (HL),A
-	INC HL
-	INC DE
-	DEC C
-	JP NZ,L743D	; continue loop by columns
-	POP DE
-	POP BC
-	POP HL
-	PUSH DE
-	LD DE,$001E	; 30
-	ADD HL,DE
-	POP DE
-	dec b
-	jp nz,L743A	; continue loop by rows
-	JP LB702	; => Proceed to the next room token
+	ld D,$FF	; tile byte
+	jp L7456	; => get params and fill rectangle
 
 ; Room token #03: Fill rectangle; params: 5 bytes (filler, width, height, address)
-L7452:	POP HL		; Restore token sequence address
+RTOK03:	POP HL		; Restore token sequence address
 	INC HL		; Skip token byte
 	LD D,(HL)
 	INC HL
-	LD C,(HL)
+L7456:	LD C,(HL)
 	INC HL
 	LD B,(HL)
 	INC HL
@@ -2754,34 +2772,28 @@ DRTILE_FF:
 ;------------------------------------------------------------------------------
 
 ; Object procedure: flip trigger "D": set/remove wall in room 9739
-LB320:	LD A,(L9755+1)
-	XOR $06
-	LD (L9755+1),A
-	JP LB350	; => Change Console color in NEAR
-
+LB320:	LD HL,L9755
+	ld B,$28	; value for XOR, to switch token $0E/$26
+	jp LB34B	; XOR and => Change Console color in NEAR
 ; Object procedure: flip trigger "E": set/remove wall in room 97A6
-LB32A:	LD A,(L97CF+1)
-	XOR $FF
-	LD (L97CF+1),A
-	JP LB350	; => Change Console color in NEAR
-
+LB32A:	ld HL,L97CF+1
+	ld B,$FF	; value for XOR, to switch tile $00/$FF
+	jp LB34B	; XOR and => Change Console color in NEAR
 ; Object procedure: flip trigger "C": set/remove wall in room 8D5C
-LB334:	LD A,(L8DBB+1)
-	XOR $06
-	LD (L8DBB+1),A
-	JP LB350	; => Change Console color in NEAR
-
+LB334:	ld HL,L8DBB
+	ld B,$28	; value for XOR, to switch token $0E/$26
+	jp LB34B	; XOR and => Change Console color in NEAR
 ; Object procedure: flip trigger "B": set/remove wall in room 8F20
-LB33E:	LD A,(L8F31+1)
-	XOR $08
-	LD (L8F31+1),A
-	JP LB350	; => Change Console color in NEAR
-
+LB33E:	ld HL,L8F31
+	ld B,$26	; value for XOR, to switch token $0E/$28
+	jp LB34B	; XOR and => Change Console color in NEAR
 ; Object procedure: flip trigger "A": set/remove wall in room 7F48
-LB348:	LD A,(L7F7A+1)
-	XOR $09
-	LD (L7F7A+1),A
-
+LB348:	ld HL,L7F7A
+	ld B,$29	; value for XOR, to switch token $0E/$27
+;
+LB34B:	ld A,(HL)
+	xor B
+	ld (HL),A
 ; Change Console color in NEAR, so we see that console action worked
 LB350:	ld HL,$DB67	; NEAR screen address
 	ld c,4		; 4 columns
@@ -3263,9 +3275,19 @@ LB6BB:	LD (HL),A
 	ADD HL,DE	; now HL = room sequence start address
 
 LB6EE:	LD A,(HL)	; get next token
-	CP $FF		; End of sequence?
+	or A		; End of sequence?
 LB6F1:	JP Z,LF973	; !!MUT-ARG!! yes => run Room initialization code
-	PUSH HL		; Save address in the room sequence
+	cp $10
+	jp c,LB6F4	; => process token #00..#10
+	cp $21
+	jp c,RTOK1X	; => process token #11..#20
+	cp $40
+	jp c,RTOK2X	; => process token #21..#30
+	cp $80
+	jp c,RTOK40	; => process token #40..#7F
+	jp RTOK80	; => process token #80..#BF
+; Process token #00..#0F
+LB6F4:	PUSH HL		; Save address in the room sequence
 	LD L,A
 	LD H,$00
 	ADD HL,HL	; * 2
@@ -3283,21 +3305,115 @@ LB702:	POP HL		; Restore address in the room sequence
 	JP LB6EE	; => continue room sequence processing
 
 ; Table of Room tokens
-LB706:	DEFW LB38F	; #00: Put 3x3 tiles L7C21; params: 2 bytes (address)
-	DEFW L7381	; #01: Fill to down; params: 4 bytes (count, filler, address)
-	DEFW L739F	; #02: Fill to right; params: 4 bytes (count, filler, address)
-	DEFW L7452	; #03: Fill rectangle; params: 5 bytes (filler, width, height, address)
-	DEFW L73F3	; #04: Fill whole Tile screen 0 with one tile; params: 1 byte (filler)
-	DEFW L7406	; #05: Copy block of tiles; params: 6 bytes (width, height, srcaddr, address)
-	DEFW L73A4	; #06: Fill triangle from wide top; params: 4 bytes (filler, count, address)
-	DEFW L73C5	; #07: Fill triangle from wide bottom; params: 4 bytes (filler, count, address)
-	DEFW L73EB	; #08: Fill triangle from wide bottom; params: 4 bytes (filler, count, address)
-	DEFW L73EF	; #09: Fill triangle from wide top; params: 4 bytes (filler, count, address)
-	DEFW L7395	; #0A: Fill to down-right; params: 4 bytes (count, filler, address)
-	DEFW L739A	; #0B: Fill to down-left; params: 4 bytes (count, filler, address)
-	DEFW L742B	; #0C: Copy block of tiles N times; params: 6 bytes (srcaddr, width, count, address)
-	DEFW L7359	; #0D: Set border color; params: 1 byte
-	DEFW L734D	; #0E: Put one tile at the given address; params: 3 bytes (tile, address)
+LB706:	DEFW 0		; #00: End of sequence
+	DEFW RTOKFI	; #01: Fill whole Tile screen 0 with $01; no params
+	DEFW RTOKFI	; #02: Fill whole Tile screen 0 with $02; no params
+	DEFW RTOK03	; #03: Fill rectangle; params: 5 bytes (filler, width, height, address)
+	DEFW RTOK04	; #04: Fill to right; params: 4 bytes (count, filler, address)
+	DEFW RTOK05	; #05: Fill whole Tile screen 0 with $FF; no params
+	DEFW RTOK06	; #06: Fill triangle from wide top; params: 4 bytes (filler, count, address)
+	DEFW RTOK07	; #07: Fill triangle from wide bottom; params: 4 bytes (filler, count, address)
+	DEFW RTOK08	; #08: Fill triangle from wide bottom; params: 4 bytes (filler, count, address)
+	DEFW RTOK09	; #09: Fill triangle from wide top; params: 4 bytes (filler, count, address)
+	DEFW RTOK0A	; #0A: Fill rectangle with $FF; params: 4 bytes (width, height, address)
+	DEFW RTOK0B	; #0B: Put one tile $2A at the given address; params: 2 bytes (address)
+	DEFW RTOK0C	; #0C: Fill to right with $FF; params: 3 bytes (count, address)
+	DEFW RTOKFI	; #0D: Fill whole Tile screen 0 with $0D; no params
+	DEFW RTOK0E	; #0E: Put one tile at the given address; params: 3 bytes (tile, address)
+	DEFW 0		; #0F: UNUSED
+; Tokens #10..#20: Copy block of tiles using table TBLOK2, see RTOK1X
+	;DEFW RTOK1X	; #10: Put 3x3 barrel block $7C21; params: 2 bytes (address)
+; Tokens #21..#30: Fill to down N tiles; params: 3 bytes (filler, address); count/height in token lower bits
+; Tokens #40..#7F: Copy block of tiles; params: 4 bytes (width, height, address); source = lower bits of token
+; Tokens #80..#B0: Copy block of tiles N times; params: 4 bytes (width, count, address); source = lower bits of token
+
+; Room token #10..#20: Copy block of tiles using table TBLOK2
+; A = token, HL = token sequence address
+RTOK1X:	inc HL		; skip token byte
+	push HL		; save token sequence address
+	sub $10		; 0..16
+	add A,A
+	add A,A		; * 4
+	ld E,A
+	ld D,0
+	ld HL,TBLOK2	; table address
+	add HL,DE
+	ld E,(HL)	; get source address low
+	inc HL
+	ld D,(HL)	; get source address high
+	inc HL
+	ld B,(HL)	; get width
+	inc HL
+	ld C,(HL)	; get height
+	pop HL		; HL = token sequence address
+	ld A,(HL)	; get address low
+	inc HL
+	push HL		; save token sequence address
+	ld H,(HL)	; get address high
+	ld L,A
+	jp L7415	; => Copy block of tiles
+
+; Tokens #40..#7F: Copy block of tiles; params: 4 bytes (width, height, address); source = lower bits of token
+; HL = token sequence address; A = token
+RTOK40:	inc HL		; skip token byte
+	and $3F		; 0..63 = source index
+	add a,a		; * 2
+	push HL		; save token sequence address
+	ld E,A
+	ld D,0
+	ld HL,TBLOCK	; table address
+	add HL,DE
+	ld E,(HL)	; get source address low
+	inc HL
+	ld D,(HL)	; get source address high
+	pop HL		; HL = token sequence address
+	ld B,(HL)	; get width byte
+	inc HL
+	ld C,(HL)	; get height byte
+	inc HL
+	jp L7410	; => get address, and Copy block of tiles
+
+; Tokens #80..#BF: Copy block of tiles N times; params: 4 bytes (width, count, address); source = lower bits of token
+; HL = token sequence address; A = token
+RTOK80:	inc HL
+	and $3F		; 0..63 = source index
+	add a,a		; * 2
+	push HL		; save token sequence address
+	ld E,A
+	ld D,0
+	ld HL,TBLOCK	; table address
+	add HL,DE
+	ld E,(HL)	; get source address low
+	inc HL
+	ld D,(HL)	; get source address high
+	pop HL		; HL = token sequence address
+	ld B,(HL)	; get width byte
+	inc HL
+	ld C,(HL)	; get count/height
+	inc HL
+	LD A,(HL)	; get address low byte
+	INC HL
+	PUSH HL
+	LD H,(HL)	; get address high byte
+	LD L,A		; HL = target address
+; Copy block of tiles N times
+.looph:	push DE
+	push HL
+	push BC
+.loopw:	ld A,(DE)
+	ld (HL),A
+	inc DE
+	inc HL
+	dec B
+	jp nz,.loopw	; loop by width
+	pop BC
+	pop HL
+	ld DE,30
+	add HL,DE	; next row
+	pop DE
+	dec C
+	jp nz,.looph	; loop by height
+	jp LB702	; => Proceed to the next room token
 
 ; Finish room initialization
 ; Called to finish room initialization from room initialization procedure
