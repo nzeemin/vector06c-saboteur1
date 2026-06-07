@@ -2,6 +2,7 @@
 
 	EXPORT KeyLineEx
 	EXPORT KeyLine0
+	EXPORT KeyLine7
 	EXPORT JoystickP	; F200DULR
 	EXPORT BorderColor
 	EXPORT dzx0
@@ -114,10 +115,10 @@ KEYINT:
 ;	out (3),A
 ;	in A,(2)
 ;	ld (KeyLine6),A
-;	ld A,07Fh
-;	out (3),A
-;	in A,(2)
-;	ld (KeyLine7),A
+	ld A,07Fh
+	out (3),A
+	in A,(2)
+	ld (KeyLine7),A
 ; Joystick scan
 	in A,(6)		; read Joystick-P
 KEYINT_J:
@@ -145,7 +146,7 @@ KeyLine0:	DB 11111111b
 ;KeyLine1:	DB 11111111b
 ;KeyLine5:	DB 11111111b
 ;KeyLine6:	DB 11111111b
-;KeyLine7:	DB 11111111b
+KeyLine7:	DB 11111111b
 JoystickP:	DB 11111111b
 
 BorderColor:	DB 0		; border color number 0..15

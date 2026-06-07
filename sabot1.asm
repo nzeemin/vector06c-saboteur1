@@ -16,6 +16,10 @@ CVERT  EQU 0	; Cheat code for short route to Helicopter
 ;CBOMB EQU 0	; Cheat code for carrying BOMB
 CSHORT EQU 0	; Cheat code for small map used to test main features
 
+SCRTOP EQU $C0FF	; Game screen start address
+SCRMP  EQU SCRTOP	; Menu picture screen address
+SCRGME EQU SCRTOP+$0100-$08 ; Game screen inside the frame start address
+
 ;----------------------------------------------------------------------------
 ; Variables
 
@@ -136,7 +140,7 @@ LD210:	DEFB $04,$CE,$09,$63,$09,$63,$09,$63,$09,$63
 	DEFB $06,$D2,$02,$CA,$03,$CC,$03,$CC,$03,$CC
 	DEFB $04,$CE,$04,$CE,$04,$CE,$04,$CE,$04,$CE
 
-	DEFS 14		; filler
+	DEFS 4		; filler
 ; Mirror table
 MIRROR:	DEFB	$00,$80,$40,$C0,$20,$A0,$60,$E0,$10,$90,$50,$D0,$30,$B0,$70,$F0
 	DEFB	$08,$88,$48,$C8,$28,$A8,$68,$E8,$18,$98,$58,$D8,$38,$B8,$78,$F8
@@ -622,21 +626,42 @@ LBF67:	DEFM "  MISSION FAILURE   "
 LC062:	DEFM "DISK RETRIEVED"
 LC070:	DEFM "DISK "
 LC075:	DEFM "BONUS: $05000"
-LC082:	DEFM "LEVEL "
-LEVED:	DEFM "1"	; Current Level digit
 LC087:	DEFM "TOTAL PAY : $"
 
-TITLE:	DEFM "SABOTEUR VECTOR-06C"
+; Menu text block
+MENUTXT:
+	DEFW SCRTOP+$0B00-$10
+	DEFB 19
+	DEFM "SABOTEUR VECTOR-06C"
+	DEFB $00
+	DEFB $20+$0D	; column
+	DEFB VERSZ
 VERSION:
 	INCLUDE "versio.inc"
 VERSZ = $ - VERSION
-LDF27:	DEFM "START MISSION"
+	DEFB $00,$00,$00
+	DEFB 7
+LC082:	DEFM "LEVEL "
+LEVED:	DEFM "1"	; Current Level digit
+	DEFB $00,$00
+	DEFB 13
+	DEFM "START MISSION"
+	DEFB $00,$00
+	DEFB 11
 	DEFM "INFORMATION"
+	DEFB $FF
 
-LE204:	DEFM "YOUR MISSION"
-LE210:	DEFM "WILL BE"
+LE204:	DEFW SCRTOP+$0F00-$30
+	DEFB 12
+	DEFM "YOUR MISSION"
+	DEFB $20+$11	; column
+	DEFB 7
+	DEFM "WILL BE"
+	DEFB $FF
 
-SINFO:	DEFB 18
+; Information screen text block
+SINFO:	DEFW SCRTOP+$0D00-$20
+	DEFB 18
 	DEFM "ORIGINAL GAME 1985"
 	DEFB 14
 	DEFM "CLIVE TOWNSEND"
@@ -645,8 +670,7 @@ SINFO:	DEFB 18
 	DEFM "VECTOR-06C PORT"
 	DEFB 7
 	DEFM "NZEEMIN"
-	DEFB $00
-	DEFB $00
+	DEFB $00,$00
 	DEFB 9
 	DEFM "CONTROLS:"
 	DEFB 12
@@ -658,8 +682,12 @@ SINFO:	DEFB 18
 	DEFM "KEYBOARD:"
 	DEFB 13
 	DEFM "CURSOR ARROWS"
-	DEFB 18
-	DEFM "FIRE: TAB PS ZB VK"
+	DEFB 15
+	DEFM "FIRE: TAB PS ZB"
+	DEFB $20+$13	; column
+	DEFB 8
+	DEFM "VK SPACE"
+	DEFB $20+$0D	; column
 	DEFB 16
 	DEFM "SUICIDE: US + SS"
 	DEFB $FF
@@ -710,7 +738,7 @@ L62A2: 	LD (DE),A	; store repeated byte in buffer
  	JP L628F	; continue processing
 ;
 ; Buffer is ready, copy to screen
-L62A9: 	LD HL,$C0FF	; Start of screen
+L62A9: 	LD HL,SCRMP	; Start of screen
  	LD DE,TLSCR0	; Tile screens address
  	LD C,$0C	; Number of columns = 12
 L62B1: 	PUSH HL		; save screen address
@@ -2142,7 +2170,7 @@ LAC6E:	POP HL
 	RET
 
 ; Draw game screen frames and indicator text
-LACCA:	LD HL,$C0FF	; Screen start address
+LACCA:	LD HL,SCRTOP	; Screen start address
 	LD DE,LAD65	; Game screen frames/indicators RLE encoded sequence
 LACD5:	LD A,(DE)
 	PUSH DE
@@ -2182,9 +2210,9 @@ LACFB:	LD A,(HL)
 	POP DE
 	inc d
 	ld a,d
-	cp $E0
+	cp (high SCRTOP)+32 ; end of line?
 	jp nz,.l10
-	ld d,$C0
+	ld d,high SCRTOP
 	ld a,e
 	sub $8
 	ld e,a
@@ -2214,6 +2242,37 @@ LAD1D:
 	DEFW $DB4F
 	DEFB 4
 	RET
+
+; Print text block
+; DE = screen address
+; HL = block address
+; Block starts with screen address.
+PRSTRB:	ld E,(HL)	; get screen address low
+	inc HL
+	ld D,(HL)	; get screen address high
+	inc HL
+.l50:	ld a,(hl)
+	inc hl
+	or a
+	jp z,.l60	; $00 => next line
+	cp $FF
+	ret z		; => end of text
+	cp $20		; < $20 ?
+	jp nc,.l80	; no =>
+; A = string length 1..31
+	ld c,a		; string length
+	push de
+	call PRSTR	; Print string
+	pop de
+.l60:	ld a,e
+	sub 8		; 8 lines lower
+	ld e,a
+	jp .l50
+; A = $20..$3F: change column
+.l80:	and $1F		; 0..31
+	add A,high SCRTOP
+	ld D,A		; set screen address high
+	jp .l50
 
 ; Print string on the screen, two arguments after the CALL statement
 ; 1st word = screen address, 2nd byte = length
@@ -2299,7 +2358,7 @@ DRALL:	xor a
 	ld h,a
 	ld l,a
 	LD HL,TLSCR1	; Tile screen 1 start address
-	LD DE,$C1F7	; screen address where game screen starts
+	LD DE,SCRGME	; screen address where game screen starts
 	LD B,17		; 17 rows
 ; Loop by rows
 LB16D:	LD C,30		; 30 columns
@@ -3419,6 +3478,7 @@ RTOK80:	inc HL
 ; Called to finish room initialization from room initialization procedure
 LA0E5:			; redirect - Standard room initialization
 LB422:			; redirect - Standard room initialization (for 60 rooms)
+LF973:			; Room 84A8 initialization - crane is in room sequence now
 LB724:
 	LD HL,TLSCR1	; Tile screen 1 start address
 	ld A,$01	; Filler = $01 = "need update" mark
@@ -3688,7 +3748,7 @@ LB937:
 	ld A,(LB695+2)	; get Guard data higher byte
 	or A
 	jp nz,LB937_2	; have Guard => skip
-	ld HL,TLSCR1+8*30
+	ld HL,TLSCR1+15*30
 	ld B,30
 	ld A,1		; "need update" mark
 .loop:	ld (HL),A
@@ -4030,7 +4090,7 @@ ReadInput:
 	xor a
 	ld (.ReadInp_3+1),a
 	ld hl,ReadInput_map  ; Point HL at the keyboard list
-	ld b,2		; number of rows to check
+	ld b,3		; number of rows to check
 .ReadInp_0:
 	ld e,(hl)	; get address low
 	inc hl
@@ -4058,7 +4118,7 @@ ReadInput:
 	POP HL
 	RET
 
-; Mapping: Arrows - movement, ZB/VK/PS/Tab - fire
+; Mapping: Arrows - movement, ZB/VK/PS/Tab/Spc - fire
 ReadInput_map:                        ; 7   6   5   4   3   2   1   0
   ;DW KeyLineEx
   ;DB $01,$01,$01,$00,$00,$00,$00,$00  ; R/L SS  US  --  --  --  --  --
@@ -4066,6 +4126,8 @@ ReadInput_map:                        ; 7   6   5   4   3   2   1   0
   DB $04,$01,$08,$02,$10,$10,$10,$10  ; Dn  Rt  Up  Lt  ZB  VK  PS  Tab
   DW JoystickP
   DB $10,$10,$00,$00,$04,$08,$02,$01  ; Fr  Fr  --  --  Dn  Up  Lt  Rt
+  DW KeyLine7
+  DB $10,$00,$00,$00,$00,$00,$00,$00  ; Spc  ^   ]   \   [   Z   Y   X
 
 WaitAnyInput:
 	call ReadInput
@@ -4438,10 +4500,10 @@ LBEAA:	POP HL
 ; Movement handler: Game Over
 LBEB3:	LD HL,LBEEF	; !!MUT-ARG!! two-line message address
 	CALL PRSTRS	; Print string 1st line
-	DEFW $C8DF	; screen address
+	DEFW SCRTOP+$0800-$20 ; screen address
 	DEFB $0F
 	CALL PRSTRS	; Print string 2nd line
-	DEFW $C6CF	; screen address
+	DEFW SCRTOP+$0600-$30 ; screen address
 	DEFB $14
 ;
 	CALL LF9B9	; Pause, then wait for any key pressed
@@ -4515,24 +4577,24 @@ LBFD5:	CALL INCPAYS	; Increase PAY value by 1000 - Escape by Helicopter
 ;
 	LD HL,LC062	; Messages address
 	CALL PRSTRS	; Print string "DISK RETRIEVED"
-	DEFW $C9D7	; Screen address
+	DEFW SCRTOP+$0900-$18 ; Screen address
 	DEFB $0E
 	CALL PRSTRS	; Print string "DISK BONUS: $05000"
-	DEFW $C8A7
+	DEFW SCRTOP+$0800-$58
 	DEFB $12
 	CALL PRSTRS	; Print string "LEVEL N"
-	DEFW $C597
+	DEFW SCRTOP+$0500-$68
 	DEFB 7
 	CALL PRSTRS	; Print string "TOTAL PAY : $"
-	DEFW $C267
+	DEFW SCRTOP+$0200-$98
 	DEFB $0D
 	LD HL,LC075	; Messages address
 	CALL PRSTRS	; Print string "BONUS: $05000"
-	DEFW $CD97
+	DEFW SCRTOP+$0D00-$68
 	DEFB $0D
 	LD HL,LE388	; level bonus string
 	CALL PRSTRS	; Print string
-	DEFW $D597
+	DEFW SCRTOP+$1500-$68
 	DEFB 3
 	LD A,(LE38B)
 	LD B,A
@@ -4556,8 +4618,8 @@ LC094:	LD HL,MVTCN	; counter address
 	ld a,1
 	out ($00),a	; sound on
 	; Scroll plane 1
-	ld HL,$C7F3
-	ld DE,$C7F7
+	ld HL,SCRTOP+$0700-$0C
+	ld DE,SCRTOP+$0700-$08
 	call LC0SC	; scroll one plane
 	; Scroll plane 2
 	ld HL,$E7F3	; $C7 + $20 = $E7
@@ -5396,7 +5458,7 @@ LDE7F:	INC HL
 ; Clear strings on the screen
 ; Clears 16 strings, 18 characters each; used to clear table of scores, menu etc.
 LDEC1:	LD B,18
-	LD DE,$CDEF
+	LD DE,SCRTOP+$0D00-$18
 LDEC6:	PUSH DE
 	PUSH BC
 	LD C,18
@@ -5437,25 +5499,12 @@ LDF4C:	;PUSH DE
 ; Main menu
 LDF60:	ei
 	CALL LDEC1	; Clear strings on the screen
-	LD HL,TITLE	; Menu messages address
-	CALL PRSTRS	; Print title string
-	DEFW $CBFF
-	DEFB 19
-	CALL PRSTRS	; Print version string
-	DEFW $CDEF
-	DEFB VERSZ
-	LD HL,LC082
-	CALL PRSTRS	; Print string "LEVEL N"
-	DEFW $CDB7
-	DEFB 7
-	LD HL,LDF27
-	CALL PRSTRS	; Print string "START MISSION"
-	DEFW $CD97
-	DEFB 13
-	CALL PRSTRS	; Print string "INFORMATION"
-	DEFW $CD77
-	DEFB 11
-;
+	;LD HL,TITLE	; Menu messages address
+	;CALL PRSTRS	; Print title string
+	;DEFW SCRTOP+$0B00-$08
+	;DEFB 19
+	LD HL,MENUTXT
+	CALL PRSTRB	; Print text block
 	;CALL LE04D	; Clear key buffer playing melody
 	CALL LDFDB	; Highlight Menu item
 	LD DE,$00D4
@@ -5471,8 +5520,7 @@ LDF97:	PUSH DE
 	jp z, MENUS
 	jp MENUI
 ; Menu item "LEVEL"
-MENUL:
-	ld hl,$CDAE
+MENUL:	ld hl,SCRTOP+$0D00-$4A
 	ld (LDFDB+1),hl
 	call LDFDB	; Highlight Menu item
 .l00:	call ReadInput
@@ -5504,7 +5552,7 @@ MENUL:
 	;TODO: check Fire
 	jp .l00
 ; Menu item "START MISSION"
-MENUS:	ld hl,$CD8E
+MENUS:	ld hl,SCRTOP+$0D00-$62
 	ld (LDFDB+1),hl
 	call LDFDB	; Highlight Menu item
 .l00:	call ReadInput
@@ -5527,8 +5575,7 @@ MENUS:	ld hl,$CD8E
 	call WaitNoInput
 	jp LE2A7	; => Start Mission
 ; Menu item "INFORMATION"
-MENUI:
-	ld hl,$CD6E
+MENUI:	ld hl,SCRTOP+$0D00-$7A
 	ld (LDFDB+1),hl
 	call LDFDB	; Highlight Menu item
 .l00:	call ReadInput
@@ -5548,22 +5595,8 @@ MENUI:
 ; Show Information page
 	CALL LDEC1	; Clear strings on the screen
 	LD HL,SINFO
-	LD DE,$CDDF
-.l50:	ld a,(hl)
-	inc hl
-	or a
-	jp z,.l60	; => next line
-	cp $FF
-	jp z,.l70	; => end of text
-	ld c,a		; string length
-	push de
-	call PRSTR	; Print string
-	pop de
-.l60:	ld a,e
-	sub 8		; 8 lines lower
-	ld e,a
-	jp .l50
-.l70:	call WaitNoInput
+	call PRSTRB	; Print text block
+	call WaitNoInput
 	call WaitAnyInput
 	jp LDF60
 
@@ -5586,7 +5619,7 @@ LDFD4:	;XOR A
 	;RET
 
 ; Highlight Menu item
-LDFDB:	LD HL,$CD8E
+LDFDB:	LD HL,SCRTOP+$0D00-$62
 	LD B,$0D
 LDFE0:	LD (HL),$55
 	inc h
@@ -5616,12 +5649,7 @@ LE2A7:	CALL LDFE6	; Unhighlight Menu item
 	CALL LDEC1	; Clear strings on the screen
 ;NOTE: "ENTER SKILL LEVEL" - moved to Menu
 	LD HL,LE204	; "YOUR MISSION"
-	CALL PRSTRS	; Print string "YOUR MISSION"
-	DEFW $CECF
-	DEFB 12
-	CALL PRSTRS	; Print string "WILL BE"
-	DEFW $D0C7
-	DEFB 7
+	CALL PRSTRB	; Print text block
 	LD A,(LEVED)	; get Skill level
 	SUB $31
 	LD L,A
@@ -5633,7 +5661,7 @@ LE2A7:	CALL LDFE6	; Unhighlight Menu item
 	LD DE,LE217	; Levels data base address
 	ADD HL,DE
 	CALL PRSTRS	; Print string - level description
-	DEFW $CDB7
+	DEFW SCRTOP+$0E00-$48
 	DEFB $0E
 	LD A,(HL)
 	INC HL
@@ -5840,25 +5868,6 @@ LE48A:	;DEC BC
 
 ;----------------------------------------------------------------------------
 
-; Room 84A8 initialization
-LF973:	LD HL,TLSCR0+74	; tile screen address
-	LD DE,LF98F	; block address
-	LD C,$06	; 6 rows
-LF97B:	LD B,$03	; 3 columns
-LF97D:	LD A,(DE)
-	LD (HL),A
-	INC HL
-	INC DE
-	dec b
-	jp nz,LF97D
-	PUSH DE
-	LD DE,$001B
-	ADD HL,DE
-	POP DE
-	DEC C
-	JP NZ,LF97B
-	JP LB422
-
 ; Noise sound
 ; B = how long
 LF9A1:	ld a,b
@@ -5959,7 +5968,7 @@ Sabot1RoomsBegin:
 	INCLUDE "sabot1rb.asm"
 Sabot1RoomsEnd:
 Sabot1RoomsSize EQU Sabot1RoomsEnd - Sabot1RoomsBegin
-	DISPLAY "Rooms size: ", /A, Sabot1RoomsSize
+	DISPLAY "Rooms size:  ", /A, Sabot1RoomsSize
 
 ;----------------------------------------------------------------------------
 
