@@ -7,6 +7,7 @@
 	;EXPORT BorderColor
 	EXPORT dzx0
 	EXPORT SABOTCOD0_END
+	EXPORT SABOTCOD1_START
 
 ;----------------------------------------------------------------------------
 
@@ -26,12 +27,12 @@
 	ld HL,KEYINT			; interrupt handler address
 	ld (38h+1),HL
 
-	call SetPaletteGame
+	call SetPaletteGame		; changing palette only once
 	di
 
-; Move encoded block from SABOTCOD0_END to FF00h-LZSIZE1, LZSIZE1 bytes
+; Move encoded block from SABOTCOD0_END to C000h-LZSIZE1, LZSIZE1 bytes
 	ld DE,SABOTCOD0_END		; source addr
-	ld BC,0FF00h-LZSIZE1		; destination addr
+	ld BC,0C000h-LZSIZE1		; destination addr
 	ld HL,LZSIZE1			; size
 	inc H
 Init_1:
@@ -44,8 +45,8 @@ Init_1:
 	dec H
 	jp nz,Init_1
 ; Decompress the code and sprites from C000h-LZSIZE1 to SABOTCOD0_END
-	ld DE,0FF00h-LZSIZE1		; source addr
-	ld BC,SABOTCOD0_END		; destination addr
+	ld DE,0C000h-LZSIZE1		; source addr
+	ld BC,SABOTCOD1_START		; destination addr
 	call dzx0
 
 RestartInt:
@@ -59,35 +60,9 @@ RestartInt:
 	out (5),A			; set Joystick-P query bits
 	in A,(6)			; read Joystick-P initial value
 	ld (KEYINT_J+1),A		; store as XOR instruction parameter
-
+;
 ; Start SABOTCOD1
-	jp	SABOTCOD0_END
-
-; Set game palette
-SetPaletteGame:
-	ld HL,PaletteGame+15
-; Programming the Palette
-SetPalette:
-	ei
-	halt
-	ld DE,100Fh
-PaletLoop:
-	ld A,E
-	out (2),A
-	ld A,(HL)
-	out (0Ch),A
-	out (0Ch),A
-	out (0Ch),A
-	out (0Ch),A
-	out (0Ch),A
-	dec HL
-	out (0Ch),A
-	dec E
-	out (0Ch),A
-	dec D
-	out (0Ch),A
-	jp nz,PaletLoop
-	ret
+	jp	SABOTCOD1_START
 
 ;----------------------------------------------------------------------------
 
@@ -149,20 +124,7 @@ KeyLine0:	DB 11111111b
 KeyLine7:	DB 11111111b
 JoystickP:	DB 11111111b
 
-BorderColor:	DB 0		; border color number 0..15
-
-;----------------------------------------------------------------------------
-
-ColorNone EQU 00000000b    ; Color for empty bits  - black
-ColorOne  EQU 10110110b    ; Color for bit 1       - yellow
-ColorTwo  EQU 11010001b    ; Color for bit 0       - blue
-ColorThre EQU 01000110b    ; Color for both planes - red
-; Palette colors, game
-PaletteGame:		; Palette
-	DB	ColorNone, ColorOne, ColorTwo, ColorThre	; 0..3
-	DB	ColorNone, ColorOne, ColorTwo, ColorThre	; 4..7
-	DB	ColorNone, ColorOne, ColorTwo, ColorThre	; 8..11
-	DB	ColorNone, ColorOne, ColorTwo, ColorThre	; 12..15
+;BorderColor:	DB 0		; border color number 0..15
 
 ;----------------------------------------------------------------------------
 
@@ -245,7 +207,47 @@ dzx0_ldir1:
 		ret
 
 ;----------------------------------------------------------------------------
+SABOTCOD1_START
+;WARN: Code below this point will be erased after the main code unpack
 
+ColorNone EQU 00000000b    ; Color for empty bits  - black
+ColorOne  EQU 10110110b    ; Color for bit 1       - yellow
+ColorTwo  EQU 11010001b    ; Color for bit 0       - blue
+ColorThre EQU 01000110b    ; Color for both planes - red
+; Palette colors, game
+PaletteGame:		; Palette
+	DB	ColorNone, ColorOne, ColorTwo, ColorThre	; 0..3
+	DB	ColorNone, ColorOne, ColorTwo, ColorThre	; 4..7
+	DB	ColorNone, ColorOne, ColorTwo, ColorThre	; 8..11
+	DB	ColorNone, ColorOne, ColorTwo, ColorThre	; 12..15
+
+; Set game palette
+SetPaletteGame:
+	ld HL,PaletteGame+15
+; Programming the Palette
+SetPalette:
+	ei
+	halt
+	ld DE,100Fh
+PaletLoop:
+	ld A,E
+	out (2),A
+	ld A,(HL)
+	out (0Ch),A
+	out (0Ch),A
+	out (0Ch),A
+	out (0Ch),A
+	out (0Ch),A
+	dec HL
+	out (0Ch),A
+	dec E
+	out (0Ch),A
+	dec D
+	out (0Ch),A
+	jp nz,PaletLoop
+	ret
+
+;----------------------------------------------------------------------------
 SABOTCOD0_END
 	OUTEND
 	END

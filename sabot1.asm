@@ -5,9 +5,14 @@
 ;----------------------------------------------------------------------------
 
 	OUTPUT "sabot1.bin"
-	ORG	SABOTCOD0_END
+	ORG	SABOTCOD1_START
 
-	JP	LF9E7
+	;JP	LF9E7
+; Start point after loading
+LF9E7:	ld SP,$0100
+	CALL LBC13
+LF9F4:	jp LF913
+	;JP LF9F4
 
 ;------------------------------------------------------------------------------
 
@@ -19,6 +24,43 @@ CSHORT EQU 0	; Cheat code for small map used to test main features
 SCRTOP EQU $C0FF	; Game screen start address
 SCRMP  EQU SCRTOP	; Menu picture screen address
 SCRGME EQU SCRTOP+$0100-$08 ; Game screen inside the frame start address
+
+;----------------------------------------------------------------------------
+
+	ALIGN 256
+; Mirror table
+MIRROR:	DEFB	$00,$80,$40,$C0,$20,$A0,$60,$E0,$10,$90,$50,$D0,$30,$B0,$70,$F0
+	DEFB	$08,$88,$48,$C8,$28,$A8,$68,$E8,$18,$98,$58,$D8,$38,$B8,$78,$F8
+	DEFB	$04,$84,$44,$C4,$24,$A4,$64,$E4,$14,$94,$54,$D4,$34,$B4,$74,$F4
+	DEFB	$0C,$8C,$4C,$CC,$2C,$AC,$6C,$EC,$1C,$9C,$5C,$DC,$3C,$BC,$7C,$FC
+	DEFB	$02,$82,$42,$C2,$22,$A2,$62,$E2,$12,$92,$52,$D2,$32,$B2,$72,$F2
+	DEFB	$0A,$8A,$4A,$CA,$2A,$AA,$6A,$EA,$1A,$9A,$5A,$DA,$3A,$BA,$7A,$FA
+	DEFB	$06,$86,$46,$C6,$26,$A6,$66,$E6,$16,$96,$56,$D6,$36,$B6,$76,$F6
+	DEFB	$0E,$8E,$4E,$CE,$2E,$AE,$6E,$EE,$1E,$9E,$5E,$DE,$3E,$BE,$7E,$FE
+	DEFB	$01,$81,$41,$C1,$21,$A1,$61,$E1,$11,$91,$51,$D1,$31,$B1,$71,$F1
+	DEFB	$09,$89,$49,$C9,$29,$A9,$69,$E9,$19,$99,$59,$D9,$39,$B9,$79,$F9
+	DEFB	$05,$85,$45,$C5,$25,$A5,$65,$E5,$15,$95,$55,$D5,$35,$B5,$75,$F5
+	DEFB	$0D,$8D,$4D,$CD,$2D,$AD,$6D,$ED,$1D,$9D,$5D,$DD,$3D,$BD,$7D,$FD
+	DEFB	$03,$83,$43,$C3,$23,$A3,$63,$E3,$13,$93,$53,$D3,$33,$B3,$73,$F3
+	DEFB	$0B,$8B,$4B,$CB,$2B,$AB,$6B,$EB,$1B,$9B,$5B,$DB,$3B,$BB,$7B,$FB
+	DEFB	$07,$87,$47,$C7,$27,$A7,$67,$E7,$17,$97,$57,$D7,$37,$B7,$77,$F7
+	DEFB	$0F,$8F,$4F,$CF,$2F,$AF,$6F,$EF,$1F,$9F,$5F,$DF,$3F,$BF,$7F,$FF
+	; Make sure the Mirror table properly aligned, so lower byte is 0
+	ASSERT (MIRROR AND $FF) == 0
+;
+; Screen addresses for every 17 rows, used for Explosion drawing
+LBAB3:	DEFW $C0FF,$C0F7,$C0EF,$C0E7
+	DEFW $C0DF,$C0D7,$C0CF,$C0C7
+	DEFW $C0BF,$C0B7,$C0AF,$C0A7
+	DEFW $C09F,$C087,$C07F,$C077
+	DEFW $C06F
+	; Make sure the LBAB3 table properly aligned, so lower byte is 0
+	ASSERT (LBAB3 AND $FF) == 0
+
+; Table of game screen rows addresses, 10 rows, for auto-gun drawings
+LA747:	DEFW $C1E2,$C1DA,$C1D2,$C1CA
+	DEFW $C1C2,$C1BA,$C1B2,$C1AA
+	DEFW $C1A2,$C19A
 
 ;----------------------------------------------------------------------------
 ; Variables
@@ -142,41 +184,6 @@ LD210:	DEFB $04,$CE,$09,$63,$09,$63,$09,$63,$09,$63
 	DEFB $06,$D2,$02,$CA,$03,$CC,$03,$CC,$03,$CC
 	DEFB $04,$CE,$04,$CE,$04,$CE,$04,$CE,$04,$CE
 
-	ALIGN 256
-; Mirror table
-MIRROR:	DEFB	$00,$80,$40,$C0,$20,$A0,$60,$E0,$10,$90,$50,$D0,$30,$B0,$70,$F0
-	DEFB	$08,$88,$48,$C8,$28,$A8,$68,$E8,$18,$98,$58,$D8,$38,$B8,$78,$F8
-	DEFB	$04,$84,$44,$C4,$24,$A4,$64,$E4,$14,$94,$54,$D4,$34,$B4,$74,$F4
-	DEFB	$0C,$8C,$4C,$CC,$2C,$AC,$6C,$EC,$1C,$9C,$5C,$DC,$3C,$BC,$7C,$FC
-	DEFB	$02,$82,$42,$C2,$22,$A2,$62,$E2,$12,$92,$52,$D2,$32,$B2,$72,$F2
-	DEFB	$0A,$8A,$4A,$CA,$2A,$AA,$6A,$EA,$1A,$9A,$5A,$DA,$3A,$BA,$7A,$FA
-	DEFB	$06,$86,$46,$C6,$26,$A6,$66,$E6,$16,$96,$56,$D6,$36,$B6,$76,$F6
-	DEFB	$0E,$8E,$4E,$CE,$2E,$AE,$6E,$EE,$1E,$9E,$5E,$DE,$3E,$BE,$7E,$FE
-	DEFB	$01,$81,$41,$C1,$21,$A1,$61,$E1,$11,$91,$51,$D1,$31,$B1,$71,$F1
-	DEFB	$09,$89,$49,$C9,$29,$A9,$69,$E9,$19,$99,$59,$D9,$39,$B9,$79,$F9
-	DEFB	$05,$85,$45,$C5,$25,$A5,$65,$E5,$15,$95,$55,$D5,$35,$B5,$75,$F5
-	DEFB	$0D,$8D,$4D,$CD,$2D,$AD,$6D,$ED,$1D,$9D,$5D,$DD,$3D,$BD,$7D,$FD
-	DEFB	$03,$83,$43,$C3,$23,$A3,$63,$E3,$13,$93,$53,$D3,$33,$B3,$73,$F3
-	DEFB	$0B,$8B,$4B,$CB,$2B,$AB,$6B,$EB,$1B,$9B,$5B,$DB,$3B,$BB,$7B,$FB
-	DEFB	$07,$87,$47,$C7,$27,$A7,$67,$E7,$17,$97,$57,$D7,$37,$B7,$77,$F7
-	DEFB	$0F,$8F,$4F,$CF,$2F,$AF,$6F,$EF,$1F,$9F,$5F,$DF,$3F,$BF,$7F,$FF
-	; Make sure the Mirror table properly aligned, so lower byte is 0
-	ASSERT (MIRROR AND $FF) == 0
-;
-; Screen addresses for every 17 rows, used for Explosion drawing
-LBAB3:	DEFW $C0FF,$C0F7,$C0EF,$C0E7
-	DEFW $C0DF,$C0D7,$C0CF,$C0C7
-	DEFW $C0BF,$C0B7,$C0AF,$C0A7
-	DEFW $C09F,$C087,$C07F,$C077
-	DEFW $C06F
-	; Make sure the LBAB3 table properly aligned, so lower byte is 0
-	ASSERT (LBAB3 AND $FF) == 0
-
-; Table of game screen rows addresses, 10 rows, for auto-gun drawings
-LA747:	DEFW $C1E2,$C1DA,$C1D2,$C1CA
-	DEFW $C1C2,$C1BA,$C1B2,$C1AA
-	DEFW $C1A2,$C19A
-
 ; Guards data, 24 records, 6 bytes each
 ; +$04: Guard state, initially $0A
 ; +$05: Guard direction
@@ -208,7 +215,7 @@ LA26B:	DEFB $30,$00,$12,$01,$0A,$01	; Room 9B9D guard
 ; Guard data for rooms 7C9C/92EF
 LC66B:	DEFB $0E,$00,$0E,$00,$04,$00
 
-; Dogs data, 19 records, 10 bytes each
+; Dogs data, 19+1 records, 10 bytes each
 ; +$00/$01: Dog position in tilemap
 ; +$02: Dog direction
 ; +$03: Dog X position
@@ -599,7 +606,7 @@ LAD52:	DEFM "00000"	; Pay value text
 LAD57:	DEFM "99"	; Indicator time value
 LAD59:	DEFM "HELDTIMENEAR"
 
-LB061:	DEFM "00  $"
+;LB061:	DEFM "00  $"
 
 ; String 18 spaces
 LDEE6:	DEFM "                  "
@@ -715,15 +722,6 @@ LDIR_B:
 	ld (de),a
 	inc hl
 	inc de
-	dec b
-	jp nz,.loop
-	ret
-; LDDR command replacement, but for B as counter (BC in full LDDR)
-LDDR_B:
-.loop:	ld a,(hl)
-	ld (de),a
-	dec hl
-	dec de
 	dec b
 	jp nz,.loop
 	ret
@@ -2082,61 +2080,50 @@ LAC6E:	POP HL
 	RET
 
 ; Draw game screen frames and indicator text
-LACCA:	LD HL,SCRTOP	; Screen start address
-	LD DE,LAD65	; Game screen frames/indicators RLE encoded sequence
-LACD5:	LD A,(DE)
-	PUSH DE
-	LD C,$01
-	CP $FF
-	JP Z,LAD1D
-	CP $17
-	JP C,LACE8
-	SUB $14
-	LD C,A
-	POP DE
-	INC DE
-	LD A,(DE)
-	PUSH DE
-LACE8:	PUSH HL
-	LD H,$00
+LACCA:	LD DE,LAD65	; Game screen frames/indicators ZX0 encoded sequence
+	ld BC,TLSCR0	; destination addr (using TLSCR0 as buffer)
+	call dzx0
+; Draw tiles from buffer to screen
+	LD HL,TLSCR0	; HL = tile stream, length 768
+	LD DE,SCRTOP	; DE = screen destination
+	ld C,24		; 24 rows
+LACD5:	LD A,(HL)	; load next tile
+	INC HL
+	PUSH HL		; save stream pointer
+	PUSH DE		; save screen address
+	ld D,$00
+	ld E,A
+	ADD A,A		; * 2
 	LD L,A
-	PUSH HL
-	POP DE
-	ADD HL,HL
+	LD H,D		; 0
 	ADD HL,HL
 	ADD HL,HL	; * 8
 	ADD HL,DE	; * 9
-	LD DE,LAE02	; Indicator tiles address
-	ADD HL,DE
-	POP DE
-LACF7:	LD B,$08
-	PUSH HL
-	PUSH DE
+	LD DE,LAE02
+	ADD HL,DE	; HL = tile graphics pointer
+	POP DE		; restore screen address
+	LD B,$08	; 8 bytes per tile
+	PUSH DE		; save screen address again
 LACFB:	LD A,(HL)
 	LD (DE),A
 	INC HL
-	dec e
-	dec b
-	jp nz,LACFB
-	LD A,(HL)
-	POP DE
-	inc d
-	ld a,d
-	cp (high SCRTOP)+32 ; end of line?
-	jp nz,.l10
-	ld d,high SCRTOP
-	ld a,e
-	sub $8
-	ld e,a
-.l10:	POP HL
-	DEC C
-	JP NZ,LACF7
-	EX DE,HL
-	POP DE
-	INC DE
+	DEC E
+	DEC B
+	JP NZ,LACFB
+	POP DE		; restore screen address
+	POP HL		; restore stream pointer
+	INC D
+	LD A,D
+	CP (HIGH SCRTOP)+32	; end of screen line?
+	JP NZ,LACD5
+	dec C
+	jp z, LAD1D	; end of screen => exit
+	LD D,HIGH SCRTOP
+	LD A,E
+	SUB $08
+	LD E,A
 	JP LACD5
 LAD1D:
-	POP DE
 	LD HL,LAD4A	; Indicator messages address
 	CALL PRSTRS	; Print string "PAY : $ XXXXX"
 	DEFW $C767
@@ -2311,7 +2298,7 @@ LB177:	ld de,TLSCR0-TLSCR1
 	ld a,(hl)	; get tile from Tile screen 0
 	CP $FF		; $FF - "earth" background?
 	jp z,DRTILE_FF	; yes => special case for $FF
-LB184:	ex DE,HL	; now DE = address in Tile screen 0
+	ex DE,HL	; now DE = address in Tile screen 0
 	LD H,$00
 	LD L,A
 	PUSH HL
@@ -2323,7 +2310,6 @@ LB184:	ex DE,HL	; now DE = address in Tile screen 0
 	ld BC,LF700	; Background tiles start address
 	add HL,BC	; now HL = tile data address
 	LD BC,LB13E	; Tile buffer address
-LB199:
     REPT 8		; loop fully unrolled
 	LD A,(HL)	; get byte from tile data
 	LD (BC),A	; store the byte to tile buffer
@@ -2821,20 +2807,6 @@ LB382:	dec b
 
 ;LB3AF:	DEFS $01
 
-; Routine at B3B0
-LF913:			; redirect
-LB3B0:	;LD HL,LC681
-	;LD (L982B+2),HL	; set Room 982B initialization, NO NEED
-	;LD HL,LB673+1	; current dog data address, NO NEED
-	;LD (L9DD0+1),HL
-	LD HL,LC6A5
-	LD (L7C9C),HL
-	LD HL,LC671
-	LD (L947C+2),HL
-	LD (L93DF+2),HL
-	;NOTE: Mirror table preparation was here
-	JP LB5C7
-
 ; Initialize a guard
 ; HL = Guard data address, see A1E1
 LB40A:	LD DE,GARDPOS	; address to store guard data
@@ -3088,6 +3060,20 @@ FillTilemap_fin:
 	ei
 	ret
 
+; Routine at B3B0
+LF913:			; redirect
+;LB3B0:	;LD HL,LC681
+	;LD (L982B+2),HL	; set Room 982B initialization, NO NEED
+	;LD HL,LB673+1	; current dog data address, NO NEED
+	;LD (L9DD0+1),HL
+	LD HL,LC6A5
+	LD (L7C9C),HL
+	LD HL,LC671
+	LD (L947C+2),HL
+	LD (L93DF+2),HL
+	;NOTE: Mirror table preparation was here
+	;JP LB5C7
+;
 ; Routine at B5C7
 LB5C7:	CALL LAC44	; Reset Guard data and Dog data
 	;LD (LBC0D+1),SP	; NO NEED
@@ -4159,7 +4145,7 @@ LBCB6:	CALL LC5A3	; Check for falling
 LBCC4:	call ReadInput
 	and $10		; BIT 4,A	; check FIRE bit
 	JP Z,LBDDD
-
+;
 ; FIRE pressed, ninja standing
 LBCCC:	LD HL,LB595	; action cooldown counter
 	XOR A
@@ -5308,7 +5294,14 @@ LC6E4:	LD DE,TLSCR0+479
 	ld b,$001D
 	LD A,(DE)
 	push af
-	call LDDR_B
+; LDDR
+.loop:	ld a,(hl)
+	ld (de),a
+	dec hl
+	dec de
+	dec b
+	jp nz,.loop
+;
 	pop af
 	LD (DE),A
 	POP BC
@@ -5800,12 +5793,6 @@ LF9BF:	dec b
 ; Routine at F9E4
 ;LF9E4:	CALL TLSCR0	; Prepare screen, show anti-piracy message, and wait for any key
 
-; Start point after loading
-LF9E7:	ld SP,$0100
-	CALL LBC13
-LF9F4:	jp LF913
-	;JP LF9F4
-
 ; Routine at F9F9
 LF9F9:	LD HL,$00B4
 	LD B,$01
@@ -5857,10 +5844,6 @@ Sabot1RoomsSize EQU Sabot1RoomsEnd - Sabot1RoomsBegin
 
 ; Title picture (two ninjas), ZX0 encoded, 424 bytes
 L62DB:	INCBIN "sabot1mp.zx0"
-; Game frame with indicators + tiles, 364 bytes
-	INCLUDE "sabot1in.asm"
-; Sprites
-	INCLUDE "sabot1sp1.asm"	; Sprites, 69 bytes
 
 ; Front tiles, 124 tiles, 17 bytes each
 	INCLUDE "sabot1t1.asm"
@@ -5882,7 +5865,17 @@ Sabot1Tiles1Gap EQU Sabot1Tiles1B - Sabot1Tiles1End
 
 	INCLUDE "sabot1t2.asm"
 Sabot1Tiles2End:	; Gap of 360 bytes starts here
-	DEFS 360	; FILLER
+
+; Sprites
+	INCLUDE "sabot1sp1.asm"	; Sprites, 69 bytes
+; Game frame with indicators + tiles, 286 bytes
+	INCLUDE "sabot1in.asm"
+
+	DEFS 5		; FILLER
+Sabot1Tiles2B:
+Sabot1Tiles2Gap EQU Sabot1Tiles2B - Sabot1Tiles2End
+	;DISPLAY "Sabot1Tiles2Gap: ",/A, Sabot1Tiles2Gap
+	ASSERT Sabot1Tiles2Gap == 360	; Make sure second part of tiles properly aligned
 	INCLUDE "sabot1t3.asm"
 
 Sabot1MainEnd:
