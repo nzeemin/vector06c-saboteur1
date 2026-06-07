@@ -32,8 +32,11 @@ NJASPR:	DEFW LA0B5	; Ninja sprite address
 GARDPOS: DEFW 0		; Current Guard position in tilemap
 GARDX:	DEFB 0		; Current Guard X position
 GARDY:	DEFB 0		; Current Guard Y position
+;
+GARDST:	DEFB $0A	; Guard walking phase $00..$03 or other state: $09 = Guard dead; ...
+GARDDIR: DEFB $01	; Guard direction: 0 = left, 1 = right
 
-; Current Dog data, 9 bytes
+;NOTE: The next 9 bytes is Dog data, should not be separated
 DOGPOS:	DEFW $018E	; Dog position in tilemap
 DOGDIR:	DEFB $00	; Dog direction
 DOGX:	DEFB $08	; Dog X position
@@ -42,7 +45,7 @@ DOGLTL:	DEFB $07	; Dog's left limit
 DOGRTL:	DEFB $17	; Dog's right limit
 DOGDIX:	DEFB $00	; Dog changing direction: 0 = right to left, 1 = left to right
 DOGY:	DEFB $06	; Dog Y position
-
+;
 L71D4:	DEFB $F3	; Dog flag ??
 L71D5:	DEFB $01	; Dog sprite number 0/1/2
 
@@ -56,9 +59,6 @@ NJAFAL:	DEFB $00	; Ninja falling count, to decrease Energy on hit
 MVTCN:	DEFB $07	; Counter used in movement handlers
 DOGNOL:	DEFB $00	; Dog's flag: 1 = ignore left/right limit
 L7345:	DEFB $14	; Dog ??
-
-GARDST:	DEFB $0A	; Guard walking phase $00..$03 or other state: $09 = Guard dead; ...
-GARDDIR: DEFB $01	; Guard direction
 
 NRJ:	DEFB $13	; Energy $04..$13
 NRJLO:	DEFB $01	; Energy lower, running bit
@@ -104,6 +104,8 @@ LB850:	DEFB $C8	; HELD tile
 LE388:	DEFM " 10"	; level bonus string
 LE38B:	DEFB $0A	; level bonus value
 
+LBAB2:	DEFB $00	; Explosion counter
+
 ;----------------------------------------------------------------------------
 
 ; Table of four addresses of Ninja/Guard walking sprites
@@ -140,7 +142,7 @@ LD210:	DEFB $04,$CE,$09,$63,$09,$63,$09,$63,$09,$63
 	DEFB $06,$D2,$02,$CA,$03,$CC,$03,$CC,$03,$CC
 	DEFB $04,$CE,$04,$CE,$04,$CE,$04,$CE,$04,$CE
 
-	DEFS 4		; filler
+	ALIGN 256
 ; Mirror table
 MIRROR:	DEFB	$00,$80,$40,$C0,$20,$A0,$60,$E0,$10,$90,$50,$D0,$30,$B0,$70,$F0
 	DEFB	$08,$88,$48,$C8,$28,$A8,$68,$E8,$18,$98,$58,$D8,$38,$B8,$78,$F8
@@ -694,6 +696,19 @@ SINFO:	DEFW SCRTOP+$0D00-$20
 
 ;----------------------------------------------------------------------------
 
+; Explosion image, 3x3 tiles
+LABE5:	DEFB $04,$66,$06,$03,$4B,$E3,$C3,$43
+	DEFB $48,$08,$18,$18,$39,$BB,$FF,$FF
+	DEFB $01,$04,$60,$C0,$86,$1C,$F8,$F1
+LABFD:	DEFB $03,$7F,$1F,$03,$43,$C7,$0F,$AF
+	DEFB $88,$01,$81,$01,$65,$E7,$EF,$E0
+	DEFB $E0,$C8,$82,$86,$84,$C4,$E1,$F0
+	DEFB $0F,$9E,$BC,$30,$61,$C3,$83,$10
+	DEFB $7D,$38,$38,$30,$10,$11,$10,$50
+	DEFB $F1,$F9,$38,$1C,$06,$03,$10,$41
+
+;----------------------------------------------------------------------------
+
 ; LDIR command replacement, but for B as counter (BC in full LDIR)
 LDIR_B:
 .loop:	ld a,(hl)
@@ -716,81 +731,30 @@ LDDR_B:
 ;----------------------------------------------------------------------------
 
 ; Show title picture (two ninjas)
-L6289: 	LD HL,L62DB	; Encoded picture data address
- 	LD DE,TLSCR0	; Tile screens address, used as a buffer
-L628F: 	LD A,(HL)	; Load next byte of picture data
- 	CP $02		; check for control byte $02 - end of sequence
- 	JP Z,L62A9 	; => Copy the buffer to screen
- 	INC HL		; move to next source byte
- 	or a		; check for repeater marker
- 	JP Z,L62A1 	; => repeat byte N times
- 	CP $FF		; check for block marker
- 	JP Z,L62A1 	; => repeat byte N times
- 	LD (DE),A	; Store regular byte into tile screen
- 	INC DE		; next buffer address
- 	JP L628F	; Loop back to process next byte
-L62A1: 	LD B,(HL)	; get repeat count
-L62A2: 	LD (DE),A	; store repeated byte in buffer
- 	INC DE		; next buffer address
-	dec b
- 	jp nz,L62A2	; repeat B times
- 	INC HL		; move to next source byte
- 	JP L628F	; continue processing
-;
+L6289: 	
+; Decompress the picture to TLSCR0 (used as buffer)
+	ld DE,L62DB	; source addr
+	ld BC,TLSCR0	; destination addr
+	call dzx0
 ; Buffer is ready, copy to screen
-L62A9: 	LD HL,SCRMP	; Start of screen
- 	LD DE,TLSCR0	; Tile screens address
- 	LD C,$0C	; Number of columns = 12
-L62B1: 	PUSH HL		; save screen address
- 	LD B,$18	; Number of rows = 24
-L62B4: 	PUSH HL		; save screen address
- 	PUSH BC		; save counters
- 	LD B,$08	; 8 lines
-L62B8: 	LD A,(DE)	; get picture byte
- 	OR (HL)		; bitwise OR with screen pixels
- 	LD (HL),A	; put to the screen
- 	INC DE		; next address in the buffer
- 	dec l		; next line
+L62A9:	LD HL,SCRMP	; Start of screen
+	LD DE,TLSCR0	; Tile screens address
+	LD C,12		; Number of columns = 12
+L62B1:	PUSH HL		; save screen address
+	LD B,24*8	; 192 lines = 24 rows * 8 lines
+L62B4:	LD A,(DE)	; get picture byte
+	LD (HL),A	; put to the screen
+	INC DE		; next address in the buffer
+	dec l		; next line
 	dec b
- 	jp nz,L62B8	; Repeat 8 times
- 	POP BC		; restore counters
- 	POP HL		; restore screen address
- 	PUSH DE		; save address in picture buffer
- 	LD DE,$FFF8	; -8
- 	ADD HL,DE	; move HL to next tile row
- 	POP DE		; restore address in picture buffer
-	dec b
- 	jp nz,L62B4	; continue loop for rows
- 	POP HL		; restore screen address
- 	inc h		; next column
- 	DEC C		; decrement column counter
- 	JP NZ,L62B1	; continue loop for columns
- 	RET
+	jp nz,L62B4	; Repeat 192 times
+	POP HL		; restore screen address
+	inc h		; next column
+	DEC C		; decrement column counter
+	JP NZ,L62B1	; continue loop for columns
+	RET
 
-; Room token #00: Barrel, 3x3 tiles 7C21; params: 2 bytes (address)
-LB38F:	;POP HL
-	INC HL
-	LD A,(HL)
-	INC HL
-	PUSH HL
-	LD H,(HL)
-	LD L,A
-	LD DE,L7C21	; Tile block address
-	LD C,$03
-LB39B:	LD B,$03
-LB39D:	LD A,(DE)
-	LD (HL),A
-	INC DE
-	INC HL
-	dec b
-	jp nz,LB39D
-	PUSH DE
-	LD DE,$001B
-	ADD HL,DE
-	POP DE
-	DEC C
-	JP NZ,LB39B
-	JP LB702	; => Proceed to the next room token
+;----------------------------------------------------------------------------
 
 ; Room token #0B: Put one tile $2A at the given address; params: 2 bytes (address)
 RTOK0B:	POP HL		; Restore token sequence address
@@ -966,42 +930,6 @@ L7417:	LD A,(DE)
 	DEC C
 	JP NZ,L7415	; continue loop by rows
 	JP LB702	; => Proceed to the next room token
-
-; Room token #0C: Copy block of tiles N times; params: 6 bytes (srcaddr, width, count, address)
-; L742B:	POP HL		; Restore token sequence address
-; 	INC HL		; Skip token byte
-; 	LD E,(HL)	; get source address low byte
-; 	INC HL
-; 	LD D,(HL)	; get source address high byte
-; 	INC HL
-; 	LD C,(HL)	; get width byte
-; 	INC HL
-; 	LD B,(HL)	; get height byte
-; 	INC HL
-; 	LD A,(HL)	; get address low byte
-; 	INC HL
-; 	PUSH HL
-; 	LD H,(HL)	; get address high byte
-; 	LD L,A
-; L743A:	PUSH HL
-; 	PUSH BC
-; 	PUSH DE
-; L743D:	LD A,(DE)
-; 	LD (HL),A
-; 	INC HL
-; 	INC DE
-; 	DEC C
-; 	JP NZ,L743D	; continue loop by columns
-; 	POP DE
-; 	POP BC
-; 	POP HL
-; 	PUSH DE
-; 	LD DE,$001E	; 30
-; 	ADD HL,DE
-; 	POP DE
-; 	dec b
-; 	jp nz,L743A	; continue loop by rows
-; 	JP LB702	; => Proceed to the next room token
 
 ; Room token #0F: Fill rectangle with $FF; params: 4 bytes (width, height, address)
 RTOK0A:	POP HL		; Restore token sequence address
@@ -2119,22 +2047,6 @@ LA782:	INC HL
 
 ;----------------------------------------------------------------------------
 
-; Explosion image, 3x3 tiles
-LABE5:	DEFB $04,$66,$06,$03,$4B,$E3,$C3,$43
-	DEFB $48,$08,$18,$18,$39,$BB,$FF,$FF
-	DEFB $01,$04,$60,$C0,$86,$1C,$F8,$F1
-LABFD:	DEFB $03,$7F,$1F,$03,$43,$C7,$0F,$AF
-	DEFB $88,$01,$81,$01,$65,$E7,$EF,$E0
-	DEFB $E0,$C8,$82,$86,$84,$C4,$E1,$F0
-	DEFB $0F,$9E,$BC,$30,$61,$C3,$83,$10
-	DEFB $7D,$38,$38,$30,$10,$11,$10,$50
-	DEFB $F1,$F9,$38,$1C,$06,$03,$10,$41
-
-; Data block at AC2D
-;LAC2D:	DEFB $00,$00,$00,$00,$00,$00,$00,$00
-;	DEFB $00,$00,$00,$00,$00,$00,$00,$00
-;	DEFB $00,$00,$00,$00,$00,$00,$00
-
 ; Reset Guard data and Dog data
 LAC44:	LD HL,LAC72	; address for Table of Guard data addresses
 	LD B,$18	; 24
@@ -2292,13 +2204,18 @@ PRSTRS:
 ; DE = screen address
 PRSTR:	LD A,(HL)	; get symbol byte
 	PUSH HL
-	LD H,$00
+	PUSH DE
 	LD L,A
+	xor A
+	LD H,A		; HL = symbol
+	sub L		; A = -symbol
+	ld D,$FF
+	ld E,A		; -symbol
 	ADD HL,HL
 	ADD HL,HL
 	ADD HL,HL	; * 8
-	PUSH DE
-LAEDA:	ld de,FONT-256	; !!MUT-ARG!! font address
+	ADD HL,DE	; * 7
+	ld DE,FONT-32*7	; font base address
 	ADD HL,DE
 	POP DE
 	PUSH DE
@@ -2313,11 +2230,13 @@ LAEDA:	ld de,FONT-256	; !!MUT-ARG!! font address
 	ld a,d
 	add a,$20	; switch to 2nd plane
 	ld d,a
-	LD B,$08
-LAEE2:	LD A,(HL)
+	xor A
+	ld (DE),A	; line 0, empty
+	LD B,7
+LAEE2:	dec e		; next screen line
+	LD A,(HL)
 	LD (DE),A
 	INC HL
-	dec e		; next screen line
 	dec b
 	jp nz,LAEE2
 	POP DE
@@ -4060,8 +3979,6 @@ LBA67:	LD A,(DE)	; get pixels
 	out ($00),a	; Sound off
 	ret
 
-LBAB2:	DEFB $00	; ??
-
 ; Set "need update" mark for object HL
 LBBAE_HL:
 	push hl
@@ -4577,14 +4494,16 @@ LBFD5:	CALL INCPAYS	; Increase PAY value by 1000 - Escape by Helicopter
 ;
 	LD HL,LC062	; Messages address
 	CALL PRSTRS	; Print string "DISK RETRIEVED"
-	DEFW SCRTOP+$0900-$18 ; Screen address
+	DEFW SCRTOP+$0900-$28 ; Screen address
 	DEFB $0E
 	CALL PRSTRS	; Print string "DISK BONUS: $05000"
 	DEFW SCRTOP+$0800-$58
 	DEFB $12
+	ld HL,LC082
 	CALL PRSTRS	; Print string "LEVEL N"
 	DEFW SCRTOP+$0500-$68
 	DEFB 7
+	ld HL,LC087
 	CALL PRSTRS	; Print string "TOTAL PAY : $"
 	DEFW SCRTOP+$0200-$98
 	DEFB $0D
@@ -4686,17 +4605,6 @@ LC162:	LD HL,LC1B6	; Movement handler address
 	LD (NJASPR),HL	; set Ninja sprite address
 ; Entry point
 	JP LB8D0	; => Update Ninja on tilemap
-
-; Data block at C171
-;LC171:	DEFB $3A,$40,$9C,$FE,$00,$CA,$26,$C2
-;	DEFB $3A,$40,$9C,$3D,$32,$40,$9C,$2A
-;	DEFB $42,$9C,$11,$E2,$FF,$19,$22,$42
-;	DEFB $9C,$CD,$DF,$BB,$CB,$5F,$20,$DD
-;	DEFB $C3,$26,$C2,$3A,$40,$9C,$FE,$0A
-;	DEFB $CA,$26,$C2,$3A,$40,$9C,$3C,$32
-;	DEFB $40,$9C,$2A,$42,$9C,$11,$1E,$00
-;	DEFB $19,$22,$42,$9C,$CD,$DF,$BB,$CB
-;	DEFB $57,$20,$BA,$18,$70
 
 LC1B6:	LD A,(NJAX)	; get Ninja X
 	CP $18		; 24 ?
@@ -5473,6 +5381,41 @@ LDEC6:	PUSH DE
 	jp nz,LDEC6
 	RET
 
+; Clear LASTK and do RST $38 once
+LDFD4:	;XOR A
+	;LD ($5C08),A	; clear LASTK
+	;RST $38
+	;NOP
+	;RET
+
+; Highlight Menu item
+LDFDB:	LD HL,SCRTOP+$0D00-$62
+	LD B,$0D
+LDFE0:	LD (HL),$55
+	inc h
+	dec b
+	jp nz,LDFE0
+	RET
+
+; Unhighlight Menu item
+LDFE6:	LD HL,(LDFDB+1)
+	LD B,$0D
+LDFEB:	LD (HL),$00
+	inc h
+	dec b
+	jp nz,LDFEB
+	RET
+
+; Clear key buffer playing melody
+LE04D:	;CALL LE440	; Play next note in melody
+	;CALL LDFD4	; Clear LASTK and do RST $38 once
+	;LD A,($5C08)	; get LASTK
+	;CP $00
+	;RET Z
+	;JP LE04D
+
+MenuItem: DEFB 1	; 0 = LEVEL, 1 = START, 2 = INFO
+
 ; Prepare for Menu
 LDF37:	;LD A,$01	; blue
 	;ld (BorderColor),a
@@ -5499,10 +5442,6 @@ LDF4C:	;PUSH DE
 ; Main menu
 LDF60:	ei
 	CALL LDEC1	; Clear strings on the screen
-	;LD HL,TITLE	; Menu messages address
-	;CALL PRSTRS	; Print title string
-	;DEFW SCRTOP+$0B00-$08
-	;DEFB 19
 	LD HL,MENUTXT
 	CALL PRSTRB	; Print text block
 	;CALL LE04D	; Clear key buffer playing melody
@@ -5518,7 +5457,32 @@ LDF97:	PUSH DE
 	jp z, MENUL
 	dec a
 	jp z, MENUS
-	jp MENUI
+	;jp MENUI
+; Menu item "INFORMATION"
+MENUI:	ld hl,SCRTOP+$0D00-$7A
+	ld (LDFDB+1),hl
+	call LDFDB	; Highlight Menu item
+.l00:	call ReadInput
+	rrca		; Right - do nothing
+	rrca		; Left - do nothing
+	rrca		; Down - do nothing
+	rrca		; Up ?
+	jp nc,.l10	; no =>
+	call LDFE6	; Unhighlight Menu item
+	ld a,1
+	ld (MenuItem),a
+	call WaitNoInput
+	jp MENUS
+.l10:	rrca		; Fire ?
+	jp nc,.l00	; =>
+	call LDFE6	; Unhighlight Menu item
+; Show Information page
+	CALL LDEC1	; Clear strings on the screen
+	LD HL,SINFO
+	call PRSTRB	; Print text block
+	call WaitNoInput
+	call WaitAnyInput
+	jp LDF60
 ; Menu item "LEVEL"
 MENUL:	ld hl,SCRTOP+$0D00-$4A
 	ld (LDFDB+1),hl
@@ -5573,77 +5537,8 @@ MENUS:	ld hl,SCRTOP+$0D00-$62
 .l20:	rrca		; Fire ?
 	jp nc,.l00	; =>
 	call WaitNoInput
-	jp LE2A7	; => Start Mission
-; Menu item "INFORMATION"
-MENUI:	ld hl,SCRTOP+$0D00-$7A
-	ld (LDFDB+1),hl
-	call LDFDB	; Highlight Menu item
-.l00:	call ReadInput
-	rrca		; Right - do nothing
-	rrca		; Left - do nothing
-	rrca		; Down - do nothing
-	rrca		; Up ?
-	jp nc,.l10	; no =>
-	call LDFE6	; Unhighlight Menu item
-	ld a,1
-	ld (MenuItem),a
-	call WaitNoInput
-	jp MENUS
-.l10:	rrca		; Fire ?
-	jp nc,.l00	; =>
-	call LDFE6	; Unhighlight Menu item
-; Show Information page
-	CALL LDEC1	; Clear strings on the screen
-	LD HL,SINFO
-	call PRSTRB	; Print text block
-	call WaitNoInput
-	call WaitAnyInput
-	jp LDF60
-
-MenuItem: DEFB 1	; 0 = LEVEL, 1 = START, 2 = INFO
-
-LDFA8:
-; Entry point
-LDFCC:	;DEC DE
-	;LD A,D
-	;OR E
-	;JP NZ,LDF97
-	;jp LDF97	; continue menu loop
-;LDFD1:	JP LBC3B
-
-; Clear LASTK and do RST $38 once
-LDFD4:	;XOR A
-	;LD ($5C08),A	; clear LASTK
-	;RST $38
-	;NOP
-	;RET
-
-; Highlight Menu item
-LDFDB:	LD HL,SCRTOP+$0D00-$62
-	LD B,$0D
-LDFE0:	LD (HL),$55
-	inc h
-	dec b
-	jp nz,LDFE0
-	RET
-
-; Unhighlight Menu item
-LDFE6:	LD HL,(LDFDB+1)
-	LD B,$0D
-LDFEB:	LD (HL),$00
-	inc h
-	dec b
-	jp nz,LDFEB
-	RET
-
-; Clear key buffer playing melody
-LE04D:	;CALL LE440	; Play next note in melody
-	;CALL LDFD4	; Clear LASTK and do RST $38 once
-	;LD A,($5C08)	; get LASTK
-	;CP $00
-	;RET Z
-	;JP LE04D
-
+	;jp LE2A7	; => Start Mission
+;
 ; Start Mission
 LE2A7:	CALL LDFE6	; Unhighlight Menu item
 	CALL LDEC1	; Clear strings on the screen
@@ -5907,10 +5802,6 @@ LF9BF:	dec b
 
 ; Start point after loading
 LF9E7:	ld SP,$0100
-	;LD A,$21
-	;LD (LAEDA+1),A
-	;LD A,$C6
-	;LD (LAEDA+2),A
 	CALL LBC13
 LF9F4:	jp LF913
 	;JP LF9F4
@@ -5956,61 +5847,65 @@ LFA31:	CALL NRJDEC	; Decrease Energy by B
 
 ;----------------------------------------------------------------------------
 
-; Game frame with indicators + tiles, 157 + 207 = 364 bytes
-	INCLUDE "sabot1in.asm"
-
-; Items, 1080 bytes
-	INCLUDE "sabot1it.asm"
-
 ; Rooms
 Sabot1RoomsBegin:
 	INCLUDE "sabot1rm.asm"
-	INCLUDE "sabot1rb.asm"
+	INCLUDE "sabot1rb.asm"	; 833 bytes
 Sabot1RoomsEnd:
 Sabot1RoomsSize EQU Sabot1RoomsEnd - Sabot1RoomsBegin
 	DISPLAY "Rooms size:  ", /A, Sabot1RoomsSize
 
-;----------------------------------------------------------------------------
+; Title picture (two ninjas), ZX0 encoded, 424 bytes
+L62DB:	INCBIN "sabot1mp.zx0"
+; Game frame with indicators + tiles, 364 bytes
+	INCLUDE "sabot1in.asm"
+; Sprites
+	INCLUDE "sabot1sp1.asm"	; Sprites, 69 bytes
 
 ; Front tiles, 124 tiles, 17 bytes each
 	INCLUDE "sabot1t1.asm"
 Sabot1Tiles1End:	; Gap of $07DD bytes starts here
 
-; Title picture (two ninjas), RLE encoded, 693 bytes
-	INCLUDE "sabot1mp.asm"
-
-; Sprites, 729 bytes
-	INCLUDE "sabot1sp.asm"
-; Font, 472 bytes
+; Font, 413 bytes
 	INCLUDE "sabot1ft.asm"
+; Sprites
+	INCLUDE "sabot1sp2.asm"	; Sprites, 630 bytes
+; Items, 960 bytes
+	INCLUDE "sabot1it.asm"
 
-	DEFS 119 ;FILLER
-
+	DEFS 10		;FILLER
 Sabot1Tiles1B:
 Sabot1Tiles1Gap EQU Sabot1Tiles1B - Sabot1Tiles1End
+	;DISPLAY "Sabot1Tiles1Gap: ",/A, Sabot1Tiles1Gap
 	ASSERT Sabot1Tiles1Gap == 2013	; Make sure second part of tiles properly aligned
 	INCLUDE "sabot1t1b.asm"
+
 	INCLUDE "sabot1t2.asm"
-	DEFS 360
+Sabot1Tiles2End:	; Gap of 360 bytes starts here
+	DEFS 360	; FILLER
 	INCLUDE "sabot1t3.asm"
+
+Sabot1MainEnd:
+	DISPLAY "Code/data end: ", /A, Sabot1MainEnd
 
 ;----------------------------------------------------------------------------
 
 ; Tile screen 0 30x17 tiles, 510 bytes - background
-TLSCR0:	DEFS	510
+TLSCR0 = Sabot1MainEnd
 ; Tile screen 1 30x17 tiles, 510 bytes - update flags
-TLSCR1:	DEFS	510
+TLSCR1 = TLSCR0 + 510
 ; Tile screen 2 30x17 tiles, 510 bytes - Ninja screen
-TLSCR2:	DEFS	510
+TLSCR2 = TLSCR1 + 510
 ; Tile screen 3 30x17 tiles, 510 bytes - Dog screen
-TLSCR3:	DEFS	510
+TLSCR3 = TLSCR2 + 510
 ; Tile screen 4 30x17 tiles, 510 bytes - Guard screen
-TLSCR4:	DEFS	510
+TLSCR4 = TLSCR3 + 510
 ; Tile screen 5 30x17 tiles, 510 bytes - front
-TLSCR5:	DEFS	510
+TLSCR5 = TLSCR4 + 510
+
+Sabot1End = TLSCR5 + 510:
 
 ;----------------------------------------------------------------------------
-Sabot1End:
 	DISPLAY "Top address: ", /A, Sabot1End
 	OUTEND
 	END

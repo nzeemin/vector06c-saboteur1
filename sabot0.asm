@@ -4,7 +4,7 @@
 	EXPORT KeyLine0
 	EXPORT KeyLine7
 	EXPORT JoystickP	; F200DULR
-	EXPORT BorderColor
+	;EXPORT BorderColor
 	EXPORT dzx0
 	EXPORT SABOTCOD0_END
 
@@ -133,8 +133,8 @@ KEYINT_J:
 	out (1),A
 	ld A,0FFh
 	out (3),A		; scrolling
-	ld A,(BorderColor)
-	and 0Fh
+	xor A	;ld A,(BorderColor)
+		;and 0Fh
 	out (2),A		; screen mode and border
 ;
 	pop AF
