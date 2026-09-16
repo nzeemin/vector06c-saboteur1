@@ -275,26 +275,26 @@ LF700:	DEFB $01,$7D,$5D,$5D,$45,$7D,$01,$FF,$04
 	DEFB $08,$CF,$CF,$0F,$08,$CF,$CF,$0F,$02
 	DEFB $BF,$A0,$BE,$BE,$BE,$A2,$BE,$A0,$04
 	DEFB $2A,$6A,$5A,$5A,$56,$5A,$6A,$2A,$06
-	DEFB $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$02
-	DEFB $1F,$1F,$0F,$23,$38,$3F,$3F,$3F,$02
+	DEFB $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$02	; $0D sky
+	DEFB $1F,$1F,$0F,$23,$38,$3F,$3F,$3F,$02	; $0E pier fence
 	DEFB $FF,$FF,$FF,$FF,$7F,$07,$F0,$FF,$02
 	DEFB $FF,$FF,$FF,$FF,$FF,$F0,$07,$FF,$02
 	DEFB $FE,$FE,$F8,$E3,$0F,$7F,$FF,$FF,$02
-	DEFB $3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$02
+	DEFB $3F,$3F,$3F,$3F,$3F,$3F,$3F,$3F,$02	; $12 pier fence
 	DEFB $00,$7F,$7F,$FF,$08,$0F,$0F,$0F,$02
 	DEFB $00,$7F,$7F,$7F,$10,$F0,$F0,$F0,$02
 	DEFB $7C,$FE,$FE,$FE,$FE,$FE,$7C,$00,$02
 	DEFB $0F,$03,$01,$E0,$F8,$05,$03,$0F,$0A
-	DEFB $02,$7D,$7D,$7B,$0B,$F7,$F7,$F7,$02
-	DEFB $2F,$6F,$6F,$6F,$5F,$DF,$DF,$DF,$02
-	DEFB $BF,$BF,$BF,$BF,$7F,$7F,$7F,$7F,$02
+	DEFB $02,$7D,$7D,$7B,$0B,$F7,$F7,$F7,$02	; $17 metro
+	DEFB $2F,$6F,$6F,$6F,$5F,$DF,$DF,$DF,$02	; $18 metro
+	DEFB $BF,$BF,$BF,$BF,$7F,$7F,$7F,$7F,$02	; $19 metro
 	DEFB $00,$00,$00,$FF,$FF,$FF,$FF,$FF,$06
 	DEFB $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$04
-	DEFB $40,$BF,$BF,$DF,$D0,$EF,$EF,$EF,$02
-	DEFB $F4,$F7,$F7,$F7,$FA,$FB,$FB,$FB,$02
-	DEFB $FD,$FD,$FD,$FD,$FE,$FE,$FE,$FE,$02
-	DEFB $80,$80,$80,$C0,$C0,$E0,$F0,$FC,$0C
-	DEFB $01,$01,$01,$03,$03,$07,$0F,$3F,$0C
+	DEFB $40,$BF,$BF,$DF,$D0,$EF,$EF,$EF,$02	; $1C metro
+	DEFB $F4,$F7,$F7,$F7,$FA,$FB,$FB,$FB,$02	; $1D metro
+	DEFB $FD,$FD,$FD,$FD,$FE,$FE,$FE,$FE,$02	; $1E metro
+	DEFB $7F,$7F,$7F,$3F,$3F,$1F,$0F,$03,$0C	; $1F metro
+	DEFB $FE,$FE,$FE,$FC,$FC,$F8,$F0,$C0,$0C	; $20 metro
 	DEFB $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$04
 	DEFB $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$02
 	DEFB $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$04

@@ -163,7 +163,7 @@ LB5B0:	DEFW LA7AD	; #0 Nothing
 	DEFW LA8F1	; #3 ??
 	DEFW LA95D	; #4 Brick
 	DEFW LA9C9	; #5 Pipe
-	DEFW LAA35	; #6 Granade
+	DEFW LAA35	; #6 Grenade
 	DEFW LAAA1	; #7 Disk
 	DEFW LAB0D	; #8 Bomb
 	DEFW LAB79	; #9 Console
@@ -348,13 +348,13 @@ LD287:	DEFW TLSCR0+217	; Object ?? 07 Diskette
 	DEFW TLSCR0+212	; Object ?? 22
 	DEFB $6F,$02,$CA
 	DEFW 0
-LD2F7:	DEFW TLSCR0+212	; Object 23: Granade
+LD2F7:	DEFW TLSCR0+212	; Object 23: Grenade
 	DEFB $70,$06,$D2
 	DEFW 0
 	DEFW TLSCR0+212	; Object 24: Knife
 	DEFB $71,$02,$CA
 	DEFW 0
-	DEFW TLSCR0+212	; Object 25: Granade
+	DEFW TLSCR0+212	; Object 25: Grenade
 	DEFB $72,$06,$D2
 	DEFW 0
 	DEFW TLSCR0+212	; Object 26: Knife
@@ -728,8 +728,8 @@ LDIR_B:
 
 ;----------------------------------------------------------------------------
 
-; Show title picture (two ninjas)
-L6289: 	
+; Show menu picture (two ninjas)
+L6289:
 ; Decompress the picture to TLSCR0 (used as buffer)
 	ld DE,L62DB	; source addr
 	ld BC,TLSCR0	; destination addr
@@ -967,17 +967,23 @@ L7465:	LD (HL),A
 ;------------------------------------------------------------------------------
 
 ; Initial Energy fill
-L7472:	ld de,$E657	; screen address
+L7472:	ld de,$E655	; screen address 2nd plane
+	ld HL,$C655	; screen address 1st plane
 	ld a,$FF	; filler
 	ld b,15
 L7481:	push de
-	ld c,16
+	push HL
+	ld c,14		; columns count
 L7485:	ld (de),a	; put to screen
+	ld (HL),a	; put to screen
 	dec e		; line down
+	dec L
 	dec c
 	jp nz,L7485
+	pop HL
 	pop de
 	inc d		; go right
+	inc H
 	dec b
 	jp nz,L7481
 	LD A,$13
@@ -987,18 +993,28 @@ L7497:	LD (NRJLO),A
 	RET
 
 ; Decreasing Energy
-L749E:	ld hl,$E157	; screen address for line start + 1
+L749E:	ld hl,$E155	; screen address for line start + 1
 	LD A,(NRJ)	; get Energy
 	ld d,a
 	ld e,$00
 	add hl,de	; HL = screen address
-	LD B,16
+	ld E,L
+	ld A,H
+	sub $20		; to other color plane
+	ld D,A		; now DE = screen address other plane
+	LD B,14
 	LD A,(NRJLO)
 	LD C,A
 L74B2:	LD A,C
 	XOR (HL)
 	LD (HL),A
-	dec l		; line down
+	dec L		; line down
+	ex DE,HL
+	ld A,C
+	xor (HL)
+	ld (HL),A
+	dec L		; line down
+	ex DE,HL
 	dec b
 	jp nz,L74B2
 	LD A,(NRJLO)
@@ -3121,7 +3137,7 @@ LB5F5:	LD (HL),A
 	LD A,$FA
 	LD (LB2FD),A
 	LD A,$C8
-	;LD A,$D2 ;DEBUG Granade
+	;LD A,$D2 ;DEBUG Grenade
 	LD (LBD79+1),A
 	CALL L7472
 	;DI
@@ -3841,7 +3857,7 @@ LBA0C:	push HL
 	pop HL
 	;JP LBAD5	; => delete the object
 ;
-; This object should be deleted, Granade explode
+; This object should be deleted, Grenade explode
 ; HL = object address in LA39F table
 LBAD5:	CALL LFA28	; Sound
 LBAD8:	ld hl,LA39F	; !!MUT-ARG!! restore object address
@@ -3855,9 +3871,9 @@ LBAD8:	ld hl,LA39F	; !!MUT-ARG!! restore object address
 ;
 LBAE4:	ld a,(hl)	; get object tile
 	and $FE
-	CP $D2		; $D2/$D3 ? Granade
+	CP $D2		; $D2/$D3 ? Grenade
 	JP NZ,LBBA7	; no => delete the object
-; Granade; HL = object address = LA39F
+; Grenade; HL = object address = LA39F
 LBAF0:	LD HL,LBAB2	; Explosion counter address
 	XOR A
 	CP (HL)		; have Explosion already?
@@ -4075,8 +4091,8 @@ LBC2B:	;LD (HL),$AA
 	;INC HL
 	;DEC C
 	;JP NZ,LBC28
-; Show the title picture
-LBC38:	CALL L6289	; Show title picture (two ninjas)
+; Show menu picture
+LBC38:	CALL L6289	; Show menu picture (two ninjas)
 ; Entry point
 LBC3B:	;CALL LAEF0
 	;LD HL,LAD52
@@ -5842,7 +5858,7 @@ Sabot1RoomsEnd:
 Sabot1RoomsSize EQU Sabot1RoomsEnd - Sabot1RoomsBegin
 	DISPLAY "Rooms size:  ", /A, Sabot1RoomsSize
 
-; Title picture (two ninjas), ZX0 encoded, 424 bytes
+; Menu picture (two ninjas), ZX0 encoded, 424 bytes
 L62DB:	INCBIN "sabot1mp.zx0"
 
 ; Front tiles, 124 tiles, 17 bytes each
@@ -5851,16 +5867,16 @@ Sabot1Tiles1End:	; Gap of $07DD bytes starts here
 
 ; Font, 413 bytes
 	INCLUDE "sabot1ft.asm"
-; Sprites
-	INCLUDE "sabot1sp2.asm"	; Sprites, 630 bytes
 ; Items, 960 bytes
 	INCLUDE "sabot1it.asm"
+; Sprites
+	INCLUDE "sabot1sp2.asm"	; Sprites, 630 bytes
 
-	DEFS 10		;FILLER
+	DEFS 20		; FILLER
 Sabot1Tiles1B:
 Sabot1Tiles1Gap EQU Sabot1Tiles1B - Sabot1Tiles1End
-	;DISPLAY "Sabot1Tiles1Gap: ",/A, Sabot1Tiles1Gap
-	ASSERT Sabot1Tiles1Gap == 2013	; Make sure second part of tiles properly aligned
+	DISPLAY "Sabot1Tiles1Gap: ",/A, Sabot1Tiles1Gap
+	ASSERT Sabot1Tiles1Gap == 2023	; Make sure second part of tiles properly aligned
 	INCLUDE "sabot1t1b.asm"
 
 	INCLUDE "sabot1t2.asm"

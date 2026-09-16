@@ -1,5 +1,5 @@
-; Data block at FA7B
-LFA7B:	DEFB $00,$9F,$FB,$00,$00,$EF,$79,$00,$02
+; Background tiles, $63..$FE
+LFA7B:	DEFB $00,$9F,$FB,$00,$00,$EF,$79,$00,$02	; $63
 	DEFB $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$00
 	DEFB $20,$04,$20,$00,$08,$00,$20,$00,$02
 	DEFB $20,$04,$20,$00,$08,$00,$20,$00,$02
@@ -30,9 +30,9 @@ LFA7B:	DEFB $00,$9F,$FB,$00,$00,$EF,$79,$00,$02
 	DEFB $20,$04,$20,$00,$08,$00,$20,$00,$02
 	DEFB $20,$04,$20,$00,$08,$00,$20,$00,$02
 	DEFB $FF,$FF,$FF,$FF,$00,$00,$FF,$00,$06
-	DEFB $E0,$05,$00,$5F,$5F,$00,$0A,$E0,$02
-	DEFB $00,$55,$00,$FF,$FF,$00,$AA,$00,$02
-	DEFB $07,$50,$00,$FA,$FA,$00,$A0,$07,$02
+	DEFB $E0,$05,$00,$5F,$5F,$00,$0A,$E0,$02	; $82 crane
+	DEFB $00,$55,$00,$FF,$FF,$00,$AA,$00,$02	; $83 crane
+	DEFB $07,$50,$00,$FA,$FA,$00,$A0,$07,$02	; $84 crane
 	DEFB $91,$9D,$9D,$9D,$9D,$9D,$91,$9F,$04
 	DEFB $69,$68,$24,$E6,$25,$65,$65,$65,$04
 	DEFB $4B,$8B,$13,$33,$D3,$73,$13,$F3,$04
@@ -45,21 +45,21 @@ LFA7B:	DEFB $00,$9F,$FB,$00,$00,$EF,$79,$00,$02
 	DEFB $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$00
 	DEFB $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$00
 	DEFB $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$00
-	DEFB $01,$01,$39,$C7,$D7,$D7,$D7,$83,$0C
-	DEFB $01,$7D,$5D,$DD,$35,$0D,$03,$00,$0C
-	DEFB $31,$0D,$03,$00,$00,$00,$00,$00,$0C
-	DEFB $41,$3D,$1D,$0D,$05,$03,$01,$00,$0C
-	DEFB $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$02
-	DEFB $0C,$70,$C0,$00,$00,$00,$00,$00,$0C
-	DEFB $01,$7D,$5D,$5F,$4C,$70,$C0,$00,$0C
-	DEFB $02,$7C,$58,$50,$60,$40,$80,$00,$0C
+	DEFB $01,$01,$39,$C7,$D7,$D7,$D7,$83,$0C	; $91 vert base
+	DEFB $FE,$82,$A2,$22,$CA,$F2,$FC,$FF,$0C
+	DEFB $CE,$F2,$FC,$FF,$FF,$FF,$FF,$FF,$0C
+	DEFB $BE,$C2,$E2,$F2,$FA,$FC,$FE,$FF,$0C
+	DEFB $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$02	; $95
+	DEFB $F3,$8F,$3F,$FF,$FF,$FF,$FF,$FF,$0C
+	DEFB $FE,$82,$A2,$A0,$B3,$8F,$3F,$FF,$0C
+	DEFB $FD,$83,$A7,$AF,$9F,$BF,$7F,$FF,$0C	; $98
 	DEFB $F8,$E4,$9C,$78,$9C,$E4,$F8,$FC,$02
 	DEFB $0F,$33,$3C,$1E,$39,$27,$1F,$3F,$02
-	DEFB $00,$00,$00,$00,$01,$03,$07,$0F,$0A
-	DEFB $0F,$07,$03,$01,$00,$00,$00,$00,$0A
-	DEFB $00,$00,$00,$00,$80,$C0,$E0,$F0,$0A
-	DEFB $F0,$E0,$C0,$80,$00,$00,$00,$00,$0A
-	DEFB $F8,$F8,$F8,$F8,$00,$00,$00,$00,$04
+	DEFB $FF,$FF,$FF,$FF,$FE,$FC,$F8,$F0,$0A	; $9B
+	DEFB $F0,$F8,$FC,$FE,$FF,$FF,$FF,$FF,$0A
+	DEFB $FF,$FF,$FF,$FF,$7F,$3F,$1F,$0F,$0A
+	DEFB $0F,$1F,$3F,$7F,$FF,$FF,$FF,$FF,$0A
+	DEFB $F8,$F8,$F8,$F8,$00,$00,$00,$00,$04	; $9F
 	DEFB $00,$00,$00,$00,$1F,$1F,$1F,$1F,$04
 	DEFB $1F,$1F,$1F,$1F,$00,$00,$00,$00,$04
 	DEFB $8F,$8F,$8F,$8F,$8F,$8F,$8F,$8F,$04
@@ -102,16 +102,16 @@ LFA7B:	DEFB $00,$9F,$FB,$00,$00,$EF,$79,$00,$02
 	DEFB $FC,$FC,$FC,$F8,$F8,$F8,$F1,$F1,$04
 	DEFB $8F,$8F,$1F,$1F,$1F,$3F,$3F,$3F,$04
 	DEFB $FF,$FF,$FF,$FF,$FF,$FE,$FE,$FE,$04
-	DEFB $F1,$E3,$E3,$E3,$C7,$C7,$C7,$8F,$04
+	DEFB $F1,$E3,$E3,$E3,$C7,$C7,$C7,$8F,$04	; $CA
 	DEFB $00,$00,$00,$00,$F8,$F8,$F1,$F1,$04
-	DEFB $80,$BE,$AA,$BE,$AA,$BE,$80,$7F,$02
-	DEFB $49,$82,$FF,$FF,$FF,$FF,$FF,$FF,$04
-	DEFB $27,$41,$B9,$24,$5C,$49,$32,$85,$04
-	DEFB $FC,$FE,$FD,$FC,$FE,$FD,$FE,$FD,$04
+	DEFB $80,$BE,$AA,$BE,$AA,$BE,$80,$7F,$02	; $CC elevator
+	DEFB $49,$82,$FF,$FF,$FF,$FF,$FF,$FF,$04	; $CD elevator
+	DEFB $27,$41,$B9,$24,$5C,$49,$32,$85,$04	; $CE elevator
+	DEFB $FC,$FE,$FD,$FC,$FE,$FD,$FE,$FD,$04	; $CF elevator
 	DEFB $3C,$C2,$99,$B1,$A1,$A1,$C3,$3C,$02
 	DEFB $00,$8C,$FF,$73,$00,$00,$FF,$00,$02
 	DEFB $C3,$81,$42,$42,$42,$5A,$81,$3C,$04
-	DEFB $80,$BE,$C3,$24,$A5,$24,$C3,$C3,$04
+	DEFB $80,$BE,$C3,$24,$A5,$24,$C3,$C3,$04	; $D3 vert
 	DEFB $80,$BE,$FF,$00,$00,$00,$FF,$FF,$04
 	DEFB $FF,$BE,$80,$FF,$80,$BE,$80,$FF,$04
 	DEFB $00,$00,$00,$00,$00,$00,$00,$00,$04
@@ -127,35 +127,34 @@ LFA7B:	DEFB $00,$9F,$FB,$00,$00,$EF,$79,$00,$02
 	DEFB $80,$BE,$80,$FF,$FC,$83,$80,$E0,$04
 	DEFB $00,$80,$C0,$E0,$9C,$BF,$80,$FF,$04
 	DEFB $99,$00,$00,$66,$99,$00,$00,$55,$04
-	DEFB $00,$7F,$C1,$3E,$E3,$1C,$F7,$00,$06
+	DEFB $00,$7F,$C1,$3E,$E3,$1C,$F7,$00,$06	; $E3 pier
 	DEFB $BD,$81,$BD,$AD,$BD,$AD,$BD,$81,$08
-	DEFB $00,$FF,$7F,$9F,$E4,$FB,$FD,$FE,$02
-	DEFB $FE,$01,$FE,$FF,$FF,$FF,$FF,$FF,$02
-	DEFB $00,$FF,$FF,$FF,$00,$00,$00,$00,$0C
-	DEFB $7F,$80,$7F,$FF,$FF,$FF,$FF,$FF,$02
-	DEFB $00,$7F,$7E,$79,$27,$DF,$BF,$7F,$02
+	DEFB $00,$FF,$7F,$9F,$E4,$FB,$FD,$FE,$02	; $E5 metro
+	DEFB $FE,$01,$FE,$FF,$FF,$FF,$FF,$FF,$02	; $E6 metro
+	DEFB $FF,$00,$00,$00,$FF,$FF,$FF,$FF,$0C	; $E7 metro
+	DEFB $7F,$80,$7F,$FF,$FF,$FF,$FF,$FF,$02	; $E8 metro
+	DEFB $00,$7F,$7E,$79,$27,$DF,$BF,$7F,$02	; $E9 metro
 	DEFB $FF,$DD,$00,$FF,$00,$DD,$FF,$FF,$04
 	DEFB $CD,$D1,$84,$D9,$CD,$D1,$84,$D9,$04
-	DEFB $0F,$CE,$C0,$0E,$0F,$CE,$C0,$0E,$04
+	DEFB $0F,$CE,$C0,$0E,$0F,$CE,$C0,$0E,$04	; $EC ladder
 	DEFB $F0,$73,$03,$70,$F0,$73,$03,$70,$04
 	DEFB $0E,$CE,$C0,$0E,$0F,$CE,$C0,$0E,$04
 	DEFB $F0,$73,$03,$70,$B0,$73,$03,$70,$04
 	DEFB $09,$CE,$C0,$0E,$09,$CE,$C0,$0E,$02
-	DEFB $90,$73,$03,$70,$90,$73,$03,$70,$02
-	DEFB $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$02
+	DEFB $90,$73,$03,$70,$90,$73,$03,$70,$02	; $F1 ladder
+	DEFB $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$02	; $F2 blue wall
 	DEFB $00,$7F,$7F,$7F,$10,$F0,$F0,$F0,$02
 	DEFB $00,$7F,$7F,$FF,$08,$0F,$0F,$0F,$02
 	DEFB $7B,$A4,$77,$08,$DD,$2A,$00,$00,$04
-	DEFB $00,$7F,$C1,$3E,$E3,$1C,$F7,$00,$06
+	DEFB $00,$7F,$C1,$3E,$E3,$1C,$F7,$00,$06	; $F6 pier
 	DEFB $BB,$EF,$00,$FF,$00,$00,$00,$00,$04
 	DEFB $99,$FF,$FF,$FF,$00,$00,$66,$66,$06
 	DEFB $46,$4C,$4E,$44,$46,$4C,$4C,$4C,$04
 	DEFB $FF,$FF,$FF,$FF,$00,$00,$FF,$00,$06
-	DEFB $C3,$99,$BD,$3C,$7E,$7E,$FF,$FF,$04
-	DEFB $2C,$2C,$2C,$2C,$2C,$2C,$00,$7E,$02
-	DEFB $2C,$2C,$2C,$2C,$2C,$2C,$2C,$2C,$02
-	DEFB $7E,$00,$2C,$2C,$2C,$2C,$2C,$2C,$02
-	DEFB $20,$04,$20,$00,$08,$00,$20,$00,$02
+	DEFB $3C,$66,$42,$C3,$81,$81,$00,$00,$04	; $FB metro
+	DEFB $2C,$2C,$2C,$2C,$2C,$2C,$00,$7E,$02	; $FC tube
+	DEFB $2C,$2C,$2C,$2C,$2C,$2C,$2C,$2C,$02	; $FD tube
+	DEFB $7E,$00,$2C,$2C,$2C,$2C,$2C,$2C,$02	; $FE tube
 
 ; Background tile $FF
 ;LFFF7:	DEFB $DF,$FB,$DF,$FF,$F7,$FF,$DF,$FF,$08
