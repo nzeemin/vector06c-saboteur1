@@ -560,7 +560,7 @@ LE3C8	DEFB $0E,$0A,$23
 ; Level 5 "MODERATE"
 LE3DC	DEFB $0C,$09,$1E
 	DEFM "9070"
-	DEFB $FF,$0E,$0E,$26,$0E
+	DEFB $FF,$0E,$0E,$27,$0E
 	DEFM " 70"
 	DEFB $46
 	DEFW L8689
@@ -568,7 +568,7 @@ LE3DC	DEFB $0C,$09,$1E
 ; Level 6 "SLIGHTLY HARD"
 LE3F0	DEFB $0A,$07,$19
 	DEFM "8560"
-	DEFB $FF,$26,$0E,$26,$0E
+	DEFB $FF,$26,$0E,$27,$0E
 	DEFM "100"
 	DEFB $64
 	DEFW L8BAB
@@ -576,7 +576,7 @@ LE3F0	DEFB $0A,$07,$19
 ; Level 7 "HARD"
 LE404	DEFB $08,$06,$14
 	DEFM "8550"
-	DEFB $FF,$26,$27,$26,$0E
+	DEFB $FF,$26,$27,$27,$0E
 	DEFM "130"
 	DEFB $82
 	DEFW L8D5C
@@ -584,7 +584,7 @@ LE404	DEFB $08,$06,$14
 ; Level 8 "VERY HARD"
 LE418	DEFB $05,$05,$0F
 	DEFM "8050"
-	DEFB $FF,$26,$27,$26,$28
+	DEFB $FF,$26,$27,$27,$28
 	DEFM "170"
 	DEFB $AA
 	DEFW L8279
@@ -592,7 +592,7 @@ LE418	DEFB $05,$05,$0F
 ; Level 9 "EXTREMELY HARD"
 LE42C:	DEFB $02,$03,$0A
 	DEFM "7040"
-	DEFB $FF,$26,$27,$26,$28
+	DEFB $FF,$26,$27,$27,$28
 	DEFM "250"
 	DEFB $FA
 	DEFW L8608
@@ -2761,7 +2761,7 @@ LB32A:	ld HL,L97CF+1
 	jp LB34B	; XOR and => Change Console color in NEAR
 ; Object procedure: flip trigger "C": set/remove wall in room 8D5C
 LB334:	ld HL,L8DBB
-	ld B,$28	; value for XOR, to switch token $0E/$26
+	ld B,$29	; value for XOR, to switch token $0E/$27
 	jp LB34B	; XOR and => Change Console color in NEAR
 ; Object procedure: flip trigger "B": set/remove wall in room 8F20
 LB33E:	ld HL,L8F31
@@ -3952,17 +3952,34 @@ LBA5D:	LD B,3		; !!MUT-ARG!! height 1..3
 LBA5F:	LD C,3		; !!MUT-ARG!! width 1..3
 	PUSH HL
 	PUSH DE
-LBA63:	PUSH HL
+LBA63:
 	PUSH BC
+; Copy 8 bytes on the 1st color plane
+	PUSH HL
+	PUSH DE
 	LD B,8
-LBA67:	LD A,(DE)	; get pixels
-	LD (HL),A	; put to screen
+LBA67A:	LD A,(DE)	; get pixels
+	LD (HL),A	; put to screen, 1st plane
 	INC DE
 	dec l 		; line down
 	dec b
-	jp nz,LBA67
-	POP BC
+	jp nz,LBA67A
+	POP DE
 	POP HL
+; Copy the same 8 bytes on the 2nd color plane
+	PUSH HL
+	LD B,8
+	LD A,H
+	ADD A,$20	; to 2nd plane
+	LD H,A
+LBA67B:	LD A,(DE)	; get pixels
+	LD (HL),A	; put to screen, 2nd plane
+	INC DE
+	dec l 		; line down
+	dec b
+	jp nz,LBA67B
+	POP HL
+	POP BC
 	inc h		; next column
 	DEC C
 	JP NZ,LBA63
@@ -5595,19 +5612,19 @@ LE343:	ex de,hl
 	ex de,hl
 	INC HL
 	LD A,(HL)
-	LD (L97CF+1),A	; set flag for wall in room 97A6
+	LD (L97CF+1),A	; set flag for wall in room 97A6 (tile byte)
 	INC HL
 	LD A,(HL)
-	LD (L9755+1),A	; set count for wall in room 9739
+	LD (L9755),A	; set token for wall in room 9739
 	INC HL
 	LD A,(HL)
-	LD (L7F7A+1),A	; set count for wall in room 7F48
+	LD (L7F7A),A	; set token for wall in room 7F48
 	INC HL
 	LD A,(HL)
-	LD (L8DBB+1),A	; set count for wall in room 8D5C
+	LD (L8DBB),A	; set token for wall in room 8D5C
 	INC HL
 	LD A,(HL)
-	LD (L8F31+1),A	; set count for wall in room 8F20
+	LD (L8F31),A	; set token for wall in room 8F20
 	INC HL
 	ld b,$04
 	LD DE,LE388
